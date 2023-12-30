@@ -1,0 +1,2 @@
+*.dylib filter=lfs diff=lfs merge=lfs -binary
+*.a filter=lfs diff=lfs merge=lfs -binary
