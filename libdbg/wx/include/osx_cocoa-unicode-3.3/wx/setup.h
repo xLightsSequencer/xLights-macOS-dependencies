@@ -287,6 +287,8 @@
 
 #define wxUSE_WEBVIEW 1
 
+#define wxUSE_WEBVIEW_CHROMIUM 0
+
 #ifdef __WXMSW__
 #define wxUSE_WEBVIEW_IE 0
 #else
@@ -599,6 +601,11 @@
  */
 #define wxUSE_SELECT_DISPATCHER 1
 #define wxUSE_EPOLL_DISPATCHER 0
+
+/*
+   Use debug version of CEF in wxWebViewChromium.
+ */
+/* #undef wxHAVE_CEF_DEBUG */
 
 /*
    Use GStreamer for Unix.

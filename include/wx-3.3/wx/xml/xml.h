@@ -20,6 +20,7 @@
 #include "wx/list.h"
 #include "wx/textbuf.h"
 #include "wx/versioninfo.h"
+#include "wx/filefn.h"
 
 #include <memory>
 
@@ -131,7 +132,7 @@ public:
     const wxString& GetContent() const { return m_content; }
 
     bool IsWhitespaceOnly() const;
-    int GetDepth(wxXmlNode *grandparent = nullptr) const;
+    int GetDepth(const wxXmlNode *grandparent = nullptr) const;
 
     // Gets node content from wxXML_ENTITY_NODE
     // The problem is, <tag>content<tag> is represented as
@@ -222,6 +223,15 @@ enum wxXmlDocumentLoadFlag
     wxXMLDOC_KEEP_WHITESPACE_NODES = 1
 };
 
+// Create an instance of this and pass it to wxXmlDocument::Load()
+// to get detailed error information in case of failure.
+struct wxXmlParseError
+{
+    wxString message;
+    int line = 0;
+    int column = 0;
+    wxFileOffset offset = 0;
+};
 
 // This class holds XML data/document as parsed by XML parser.
 
@@ -238,8 +248,8 @@ public:
 
     // Parses .xml file and loads data. Returns TRUE on success, FALSE
     // otherwise.
-    bool Load(const wxString& filename, int flags = wxXMLDOC_NONE);
-    bool Load(wxInputStream& stream, int flags = wxXMLDOC_NONE);
+    bool Load(const wxString& filename, int flags = wxXMLDOC_NONE, wxXmlParseError* err = nullptr);
+    bool Load(wxInputStream& stream, int flags = wxXMLDOC_NONE, wxXmlParseError* err = nullptr);
 
     // Saves document as .xml file.
     virtual bool Save(const wxString& filename, int indentstep = 2) const;
@@ -277,7 +287,7 @@ public:
 
     static wxVersionInfo GetLibraryVersionInfo();
 
-#ifdef WXWIN_COMPATIBILITY_3_2
+#if WXWIN_COMPATIBILITY_3_2
     wxDEPRECATED_MSG("Remove encoding parameter from the call")
     wxXmlDocument(const wxString& filename,
                   const wxString& WXUNUSED(encoding))
