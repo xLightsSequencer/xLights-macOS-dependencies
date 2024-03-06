@@ -16,7 +16,7 @@
 #if wxUSE_VALIDATORS
 
 #include "wx/textentry.h"
-#include "wx/valtext.h"
+#include "wx/validate.h"
 
 // This header uses std::numeric_limits<>::min/max, but these symbols are,
 // unfortunately, often defined as macros and the code here wouldn't compile in
@@ -39,15 +39,16 @@ enum wxNumValidatorStyle
 // Base class for all numeric validators.
 // ----------------------------------------------------------------------------
 
-class WXDLLIMPEXP_CORE wxNumValidatorBase : public wxTextEntryValidator
+class WXDLLIMPEXP_CORE wxNumValidatorBase : public wxValidator
 {
 public:
     // Change the validator style. Usually it's specified during construction.
     void SetStyle(int style) { m_style = style; }
 
 
-    // Override base class method.
-    virtual bool Validate(wxWindow * WXUNUSED(parent)) override;
+    // Override base class method to not do anything but always return success:
+    // we don't need this as we do our validation on the fly here.
+    virtual bool Validate(wxWindow * WXUNUSED(parent)) override { return true; }
 
     // Override base class method to check that the window is a text control or
     // combobox.
@@ -59,8 +60,7 @@ protected:
         m_style = style;
     }
 
-    wxNumValidatorBase(const wxNumValidatorBase& other)
-        : wxTextEntryValidator(other)
+    wxNumValidatorBase(const wxNumValidatorBase& other) : wxValidator(other)
     {
         m_style = other.m_style;
     }
@@ -330,14 +330,17 @@ protected:
 
     virtual bool IsInRange(LongestValueType value) const = 0;
 
-    // In case IsInRange() returns false for a certain value 'VALUE', this
-    // function tries to figure out if any number in the specified range begins
-    // with the digits composing that value, returning true if it found one.
-    virtual bool IsIncomplete(LongestValueType value) const = 0;
+    // Check whether the value is in the extended range allowed on input.
+    //
+    // Notice that the minimal and maximal values that have to be accepted on
+    // input may differ from the actually defined range to allow entering
+    // a temporarily invalid number because otherwise it would not be possible
+    // to enter any digits in an initially empty control limited to the values
+    // between "10" and "20".
+    virtual bool IsInInputRange(LongestValueType value) const = 0;
 
     // Implement wxNumValidatorBase pure virtual method.
     virtual bool IsCharOk(const wxString& val, int pos, wxChar ch) const override;
-    virtual wxString IsValid(const wxString& newval) const override;
 
 private:
     wxDECLARE_NO_ASSIGN_DEF_COPY(wxIntegerValidatorBase);
@@ -386,6 +389,20 @@ public:
 
     virtual bool IsInRange(LongestValueType value) const override
     {
+        return IsValueInRange( value, this->GetMin(), this->GetMax() );
+    }
+
+    virtual bool IsInInputRange(LongestValueType value) const override
+    {
+        ValueType min = wxMin( 1, this->GetMin() );
+        ValueType max = wxMax( 0, this->GetMax() );
+
+        return IsValueInRange( value, min, max );
+    }
+
+private:
+    bool IsValueInRange(LongestValueType value, ValueType min, ValueType max ) const
+    {
         // LongestValueType is used as a container for the values of any type
         // which can be used in type-independent wxIntegerValidatorBase code,
         // but we need to use the correct type for comparisons, notably for
@@ -399,33 +416,10 @@ public:
             return false;
         }
 
-        return this->GetMin() <= valueT && valueT <= this->GetMax();
+        return min <= valueT && valueT <= max;
     }
 
-private:
-    wxDECLARE_NO_ASSIGN_CLASS(wxIntegerValidator);
-
-    virtual bool IsIncomplete(LongestValueType value) const override
-    {
-        ValueType valueT = static_cast<ValueType>(value);
-
-        if ( valueT > this->GetMax() )
-            return false;
-
-        const long exp = static_cast<long>(std::log10(static_cast<double>(this->GetMin()))) -
-                         static_cast<long>(std::log10(static_cast<double>(valueT)));
-        const long m10 = static_cast<long>(std::max(std::pow(10., exp), 10.));
-
-        valueT *= m10;
-
-        if ( IsInRange(valueT) )
-            return true;
-
-        valueT += this->GetMin() % m10;
-
-        return IsInRange(valueT);
-    }
-
+    wxDECLARE_NO_ASSIGN_DEF_COPY(wxIntegerValidator);
 };
 
 // Helper function for creating integer validators which allows to avoid
@@ -476,14 +470,17 @@ protected:
 
     virtual bool IsInRange(LongestValueType value) const = 0;
 
-    // In case IsInRange() returns false for a certain value 'VALUE', this
-    // function tries to figure out if any number in the specified range begins
-    // with the digits composing that value, returning true if it found one.
-    virtual bool IsIncomplete(LongestValueType value) const = 0;
+    // Check whether the value is in the extended range allowed on input.
+    //
+    // Notice that the minimal and maximal values that have to be accepted on
+    // input may differ from the actually defined range to allow entering
+    // a temporarily invalid number because otherwise it would not be possible
+    // to enter any digits in an initially empty control limited to the values
+    // between "10" and "20".
+    virtual bool IsInInputRange(LongestValueType value) const = 0;
 
     // Implement wxNumValidatorBase pure virtual method.
     virtual bool IsCharOk(const wxString& val, int pos, wxChar ch) const override;
-    virtual wxString IsValid(const wxString& newval) const override;
 
 private:
     // Maximum number of decimals digits after the decimal separator.
@@ -540,6 +537,16 @@ public:
         return this->GetMin() <= valueT && valueT <= this->GetMax();
     }
 
+    virtual bool IsInInputRange(LongestValueType value) const override
+    {
+        const ValueType valueT = static_cast<ValueType>(value);
+
+        ValueType min = wxMin( 0, this->GetMin() );
+        ValueType max = wxMax( 0, this->GetMax() );
+
+        return min <= valueT && valueT <= max;
+    }
+
 private:
     void DoSetMinMax()
     {
@@ -548,33 +555,6 @@ private:
         //     positive value.
         this->SetMin(-std::numeric_limits<ValueType>::max());
         this->SetMax( std::numeric_limits<ValueType>::max());
-    }
-
-    virtual bool IsIncomplete(LongestValueType value) const override
-    {
-        ValueType valueT = static_cast<ValueType>(value);
-
-        if ( valueT > this->GetMax() )
-            return false;
-
-        if ( valueT == 0. )
-            return this->GetMin() < 1.;
-
-        if ( valueT < 1. )
-            return this->GetMin() <= valueT;
-
-        const long exp = static_cast<long>(std::log10(this->GetMin())) -
-                         static_cast<long>(std::log10(valueT));
-        const long m10 = static_cast<long>(std::max(std::pow(10., exp), 10.));
-
-        valueT *= m10;
-
-        if ( IsInRange(valueT) )
-            return true;
-
-        valueT += static_cast<long>(this->GetMin()) % m10;
-
-        return IsInRange(valueT);
     }
 };
 
