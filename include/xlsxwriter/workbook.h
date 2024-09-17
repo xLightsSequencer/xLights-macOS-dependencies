@@ -1,7 +1,8 @@
 /*
  * libxlsxwriter
  *
- * Copyright 2014-2022, John McNamara, jmcnamara@cpan.org. See LICENSE.txt.
+ * SPDX-License-Identifier: BSD-2-Clause
+ * Copyright 2014-2024, John McNamara, jmcnamara@cpan.org.
  */
 
 /**
@@ -298,6 +299,7 @@ typedef struct lxw_workbook {
     struct lxw_worksheet_names *worksheet_names;
     struct lxw_chartsheet_names *chartsheet_names;
     struct lxw_image_md5s *image_md5s;
+    struct lxw_image_md5s *embedded_image_md5s;
     struct lxw_image_md5s *header_image_md5s;
     struct lxw_image_md5s *background_md5s;
     struct lxw_charts *charts;
@@ -321,6 +323,7 @@ typedef struct lxw_workbook {
     uint16_t num_format_count;
     uint16_t drawing_count;
     uint16_t comment_count;
+    uint32_t num_embedded_images;
 
     uint16_t font_count;
     uint16_t border_count;
@@ -336,6 +339,9 @@ typedef struct lxw_workbook {
     uint8_t has_vml;
     uint8_t has_comments;
     uint8_t has_metadata;
+    uint8_t has_embedded_images;
+    uint8_t has_dynamic_functions;
+    uint8_t has_embedded_image_descriptions;
 
     lxw_hash_table *used_xf_formats;
     lxw_hash_table *used_dxf_formats;
@@ -468,6 +474,7 @@ lxw_workbook *workbook_new_opt(const char *filename,
  *
  * The worksheet name must be a valid Excel worksheet name, i.e:
  *
+ * - The name cannot be blank.
  * - The name is less than or equal to 31 UTF-8 characters.
  * - The name doesn't contain any of the characters: ` [ ] : * ? / \ `
  * - The name doesn't start or end with an apostrophe.
@@ -510,6 +517,7 @@ lxw_worksheet *workbook_add_worksheet(lxw_workbook *workbook,
  *
  * The chartsheet name must be a valid Excel worksheet name, i.e.:
  *
+ * - The name cannot be blank.
  * - The name is less than or equal to 31 UTF-8 characters.
  * - The name doesn't contain any of the characters: ` [ ] : * ? / \ `
  * - The name doesn't start or end with an apostrophe.
@@ -853,7 +861,7 @@ lxw_error workbook_set_custom_property_datetime(lxw_workbook *workbook,
  * @endcode
  *
  * The rules for names in Excel are explained in the
- * [Microsoft Office documentation](http://office.microsoft.com/en-001/excel-help/define-and-use-names-in-formulas-HA010147120.aspx).
+ * [Microsoft Office documentation](https://support.microsoft.com/en-us/office/define-and-use-names-in-formulas-4d0f13ac-53b7-422e-afd2-abd7ff379c64).
  *
  */
 lxw_error workbook_define_name(lxw_workbook *workbook, const char *name,
@@ -926,6 +934,7 @@ lxw_chartsheet *workbook_get_chartsheet_by_name(lxw_workbook *workbook,
  * This function is used to validate a worksheet or chartsheet name according
  * to the rules used by Excel:
  *
+ * - The name cannot be blank.
  * - The name is less than or equal to 31 UTF-8 characters.
  * - The name doesn't contain any of the characters: ` [ ] : * ? / \ `
  * - The name doesn't start or end with an apostrophe.
