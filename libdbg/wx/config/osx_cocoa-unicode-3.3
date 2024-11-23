@@ -950,9 +950,9 @@ bindir="${exec_prefix}/bin"
 [ -z "$output_option_version"       ] || echo "3.3.0"
 [ -z "$output_option_version_full"  ] || echo "3.3.0.0"
 [ -z "$output_option_basename"      ] || echo "wx_osx_cocoau"
-[ -z "$output_option_cc"            ] || echo "clang -mmacosx-version-min=10.14"
-[ -z "$output_option_cxx"           ] || echo "clang++ -std=gnu++17 -mmacosx-version-min=10.14"
-[ -z "$output_option_ld"            ] || echo "clang++ -std=gnu++17 -mmacosx-version-min=10.14 -o"
+[ -z "$output_option_cc"            ] || echo "clang -mmacosx-version-min=11.0"
+[ -z "$output_option_cxx"           ] || echo "clang++ -std=gnu++17 -mmacosx-version-min=11.0"
+[ -z "$output_option_ld"            ] || echo "clang++ -std=gnu++17 -mmacosx-version-min=11.0 -o"
 [ -z "$flag_option_selected_config" ] || echo "$this_config"
 
 for q in $query_options; do
@@ -1297,8 +1297,8 @@ _cppflags=`echo "-I${libdir}/wx/include/osx_cocoa-unicode-3.3" $_include_cppflag
 
 # now without further ado, we can answer these too.
 [ -z "$output_option_cppflags" ] || echo $_cppflags
-[ -z "$output_option_cflags"   ] || echo $_cppflags ""
-[ -z "$output_option_cxxflags" ] || echo $_cppflags ""
+[ -z "$output_option_cflags"   ] || echo $_cppflags 
+[ -z "$output_option_cxxflags" ] || echo $_cppflags 
 [ -z "$output_option_gl_libs"  ] || echo `lib_flags_for gl`
 [ -z "$output_option_linkdeps" ] || echo $link_deps
 

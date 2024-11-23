@@ -166,8 +166,6 @@
 #define wxUSE_STD_STRING_CONV_IN_WXSTRING 1
 
 
-#define wxUSE_LONGLONG 1
-
 #define wxUSE_BASE64 1
 
 #define wxUSE_CONSOLE_EVENTLOOP 1
@@ -448,8 +446,6 @@
 #define wxUSE_AUTOID_MANAGEMENT 0
 #endif
 
-
-#define wxUSE_COMMON_DIALOGS 0
 
 #define wxUSE_BUSYINFO 1
 

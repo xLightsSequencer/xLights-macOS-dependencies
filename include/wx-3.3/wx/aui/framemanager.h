@@ -128,6 +128,8 @@ class wxAuiPaneInfo;
 class wxAuiDockInfo;
 class wxAuiDockArt;
 class wxAuiManagerEvent;
+class wxAuiSerializer;
+class wxAuiDeserializer;
 
 using wxAuiDockUIPartArray = wxBaseArray<wxAuiDockUIPart>;
 using wxAuiDockInfoArray = wxBaseArray<wxAuiDockInfo>;
@@ -452,6 +454,12 @@ public:
 
     void Update();
 
+    // Serialize or restore the whole layout using the provided serializer.
+    void SaveLayout(wxAuiSerializer& serializer) const;
+    void LoadLayout(wxAuiDeserializer& deserializer);
+
+    // Older functions using bespoke text format, prefer using the ones using
+    // wxAuiSerializer and wxAuiDeserializer above instead in the new code.
     wxString SavePaneInfo(const wxAuiPaneInfo& pane);
     void LoadPaneInfo(wxString panePart, wxAuiPaneInfo &pane);
     wxString SavePerspective();
@@ -477,13 +485,17 @@ public:
     wxRect CalculateHintRect(
                  wxWindow* paneWindow,
                  const wxPoint& pt,
-                 const wxPoint& offset);
+                 const wxPoint& offset = wxPoint{});
 
     void DrawHintRect(
                  wxWindow* paneWindow,
                  const wxPoint& pt,
-                 const wxPoint& offset);
+                 const wxPoint& offset = wxPoint{});
 
+    void UpdateHint(const wxRect& rect);
+
+    // These functions are public for compatibility reasons, but should never
+    // be called directly, use UpdateHint() above instead.
     virtual void ShowHint(const wxRect& rect);
     virtual void HideHint();
 
@@ -621,6 +633,10 @@ private:
     // Return the index in m_uiParts corresponding to the current value of
     // m_actionPart. If m_actionPart is null, returns wxNOT_FOUND.
     int GetActionPartIndex() const;
+
+    // This flag is set to true if Update() is called while the window is
+    // minimized, in which case we postpone updating it until it is restored.
+    bool m_updateOnRestore = false;
 
 #ifndef SWIG
     wxDECLARE_EVENT_TABLE();
