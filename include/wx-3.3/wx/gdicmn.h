@@ -28,6 +28,7 @@ class WXDLLIMPEXP_FWD_CORE wxBitmap;
 class WXDLLIMPEXP_FWD_CORE wxBrush;
 class WXDLLIMPEXP_FWD_CORE wxColour;
 class WXDLLIMPEXP_FWD_CORE wxCursor;
+class WXDLLIMPEXP_FWD_CORE wxCursorBundle;
 class WXDLLIMPEXP_FWD_CORE wxFont;
 class WXDLLIMPEXP_FWD_CORE wxIcon;
 class WXDLLIMPEXP_FWD_CORE wxPalette;
@@ -79,6 +80,8 @@ enum wxBitmapType
     wxBITMAP_TYPE_TGA,
     wxBITMAP_TYPE_MACCURSOR,
     wxBITMAP_TYPE_MACCURSOR_RESOURCE,
+    wxBITMAP_TYPE_WEBP,
+    wxBITMAP_TYPE_WEBP_RESOURCE,
 
     wxBITMAP_TYPE_MAX,
     wxBITMAP_TYPE_ANY = 50
@@ -1187,7 +1190,7 @@ extern void WXDLLIMPEXP_CORE wxClientDisplayRect(int *x, int *y, int *width, int
 extern wxRect WXDLLIMPEXP_CORE wxGetClientDisplayRect();
 
 // set global cursor
-extern void WXDLLIMPEXP_CORE wxSetCursor(const wxCursor& cursor);
+extern void WXDLLIMPEXP_CORE wxSetCursor(const wxCursorBundle& cursors);
 
 #endif
     // _WX_GDICMNH__

@@ -386,8 +386,9 @@ public:
     virtual void OnInternalIdle() override;
 
     /// Returns standard HTML cursor as used by wxHtmlWindow
-    static wxCursor GetDefaultHTMLCursor(HTMLCursor type);
-    static void SetDefaultHTMLCursor(HTMLCursor type, const wxCursor& cursor);
+    static wxCursor GetDefaultHTMLCursor(HTMLCursor type,
+                                         const wxWindow* window = nullptr);
+    static void SetDefaultHTMLCursor(HTMLCursor type, const wxCursorBundle& cursor);
 
 protected:
     void Init();
@@ -552,11 +553,6 @@ private:
     // the comments near its use.
     bool m_isBgReallyErased;
 
-    // standard mouse cursors
-    static wxCursor *ms_cursorLink;
-    static wxCursor *ms_cursorText;
-    static wxCursor *ms_cursorDefault;
-
     wxDECLARE_EVENT_TABLE();
     wxDECLARE_NO_COPY_CLASS(wxHtmlWindow);
 };
@@ -595,7 +591,7 @@ public:
     bool GetLinkClicked() const { return m_bLinkWasClicked; }
 
     // default copy ctor, assignment operator and dtor are ok
-    virtual wxEvent *Clone() const override { return new wxHtmlCellEvent(*this); }
+    wxNODISCARD virtual wxEvent *Clone() const override { return new wxHtmlCellEvent(*this); }
 
 private:
     wxHtmlCell *m_cell;
@@ -626,7 +622,7 @@ public:
     const wxHtmlLinkInfo &GetLinkInfo() const { return m_linkInfo; }
 
     // default copy ctor, assignment operator and dtor are ok
-    virtual wxEvent *Clone() const override { return new wxHtmlLinkEvent(*this); }
+    wxNODISCARD virtual wxEvent *Clone() const override { return new wxHtmlLinkEvent(*this); }
 
 private:
     wxHtmlLinkInfo m_linkInfo;
