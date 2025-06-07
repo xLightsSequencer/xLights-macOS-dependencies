@@ -228,6 +228,16 @@ public:
 
     T *get() const { return m_ptr; }
 
+    bool operator==(const wxObjectDataPtr<T>& other) const
+    {
+        return m_ptr == other.m_ptr;
+    }
+
+    bool operator!=(const wxObjectDataPtr<T>& other) const
+    {
+        return !(*this == other);
+    }
+
     // test for pointer validity: defining conversion to unspecified_bool_type
     // and not more obvious bool to avoid implicit conversions to integer types
     typedef T *(wxObjectDataPtr<T>::*unspecified_bool_type)() const;
@@ -397,7 +407,7 @@ protected:
     virtual wxObjectRefData *CreateRefData() const;
 
     // create a new m_refData initialized with the given one
-    virtual wxObjectRefData *CloneRefData(const wxObjectRefData *data) const;
+    wxNODISCARD virtual wxObjectRefData *CloneRefData(const wxObjectRefData *data) const;
 
     wxObjectRefData *m_refData;
 };

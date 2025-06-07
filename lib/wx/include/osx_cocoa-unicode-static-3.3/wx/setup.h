@@ -18,6 +18,12 @@
 /* the installation location prefix from configure */
 #define wxINSTALL_PREFIX "/opt/local"
 
+/* Is .symver assembler directive supported? */
+/* #undef wxHAVE_ELF_SYMVER */
+
+/* Are multiple versions of the same symbol supported? */
+/* #undef wxHAVE_ELF_SYMVER_MULTIPLE */
+
 /* Define if ssize_t type is available.  */
 #define HAVE_SSIZE_T 1
 
@@ -247,7 +253,7 @@
 #define wxUSE_WEBREQUEST_URLSESSION 1
 #endif
 
-#define wxUSE_WEBREQUEST_CURL 0
+#define wxUSE_WEBREQUEST_CURL 1
 
 #define wxUSE_PROTOCOL 1
 
@@ -581,6 +587,8 @@
 #define wxUSE_ICO_CUR 1
 
 #define wxUSE_PALETTE 1
+
+#define wxUSE_LIBWEBP 1
 
 
 #define wxUSE_ALL_THEMES    0

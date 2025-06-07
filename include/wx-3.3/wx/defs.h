@@ -346,6 +346,13 @@ typedef short int WXTYPE;
 /* for consistency with wxStatic/DynamicCast defined in wx/object.h */
 #define wxConstCast(obj, className) const_cast<className *>(obj)
 
+/* Poor man's version of C++20 std::ssize(). */
+template <class C>
+int wxSsize(const C& c)
+{
+    return static_cast<int>(c.size());
+}
+
 #endif /* __cplusplus */
 
 /* provide replacement for C99 va_copy() if the compiler doesn't have it */
@@ -2600,10 +2607,6 @@ typedef int (* LINKAGEMODE wxListIterateFunction)(void *current);
 #define DECLARE_WXOSX_OPAQUE_CFREF( name ) typedef struct __##name* name##Ref;
 #define DECLARE_WXOSX_OPAQUE_CONST_CFREF( name ) typedef const struct __##name* name##Ref;
 
-#endif
-
-#ifdef __WXMAC__
-
 #define WX_OPAQUE_TYPE( name ) struct wxOpaque##name
 
 typedef void*       WXHCURSOR;
@@ -2620,8 +2623,6 @@ typedef unsigned long   WXDWORD;
 typedef unsigned short  WXWORD;
 
 typedef WX_OPAQUE_TYPE(PicHandle ) * WXHMETAFILE ;
-
-typedef void*       WXDisplay;
 
 /*
  * core frameworks
@@ -2699,7 +2700,7 @@ typedef HIShapeRef WXHRGN;
 
 #endif // __WXMAC__
 
-#if defined(__WXMAC__)
+#ifdef __DARWIN__
 
 /* Objective-C type declarations.
  * These are to be used in public headers in lieu of NSSomething* because

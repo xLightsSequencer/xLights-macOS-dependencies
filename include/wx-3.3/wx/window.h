@@ -1107,7 +1107,7 @@ public:
 
         // does this window have the capture?
     virtual bool HasCapture() const
-        { return reinterpret_cast<const wxWindow*>(this) == GetCapture(); }
+        { return AsWindow() == GetCapture(); }
 
         // enable the specified touch events for this window, return false if
         // the requested events are not supported
@@ -1261,6 +1261,12 @@ public:
             m_inheritFont = false;
     }
     wxFont GetFont() const;
+
+        // Set/get the cursor bundle used by this window: having a bundle of
+        // cursors instead of just a single one allows the window to show the
+        // cursor appropriate for the current DPI scaling automatically.
+    virtual bool SetCursorBundle(const wxCursorBundle& cursors);
+    wxCursorBundle GetCursorBundle() const { return m_cursors; }
 
         // set/retrieve the cursor for this window (SetCursor() returns true
         // if the cursor was really changed)
@@ -1573,6 +1579,16 @@ public:
     // implementation
     // --------------
 
+    // All wxWindowBase objects in the program are actually wxWindow objects,
+    // but we need a cast to convert to wxWindow, so provide these helper
+    // functions to make it slightly less painful.
+    inline wxWindow* AsWindow();
+    inline const wxWindow* AsWindow() const;
+
+    // This version can be used even if win is null.
+    static inline wxWindow* AsWindow(wxWindowBase* win);
+    static inline const wxWindow* AsWindow(const wxWindowBase* win);
+
         // event handlers
     void OnSysColourChanged( wxSysColourChangedEvent& event );
     void OnInitDialog( wxInitDialogEvent &event );
@@ -1655,7 +1671,7 @@ public:
     // that FindFocus returns if the focus is in one of composite control's
     // windows
     virtual wxWindow *GetMainWindowOfCompositeControl()
-        { return (wxWindow*)this; }
+        { return AsWindow(); }
 
     enum NavigationKind
     {
@@ -1677,6 +1693,10 @@ public:
 
     // This is an internal helper function implemented by text-like controls.
     virtual const wxTextEntry* WXGetTextEntry() const { return nullptr; }
+
+    // Internal function used to update the shown cursor when the cursor size
+    // changes.
+    virtual void WXUpdateCursor();
 
 
     // DPI-related helpers for ports using DIPs.
@@ -1774,7 +1794,7 @@ protected:
 #endif // wxUSE_DRAG_AND_DROP
 
     // visual window attributes
-    wxCursor             m_cursor;
+    wxCursor             m_cursor;              // don't use (see m_cursors)!
     wxFont               m_font;                // see m_hasFont
     wxColour             m_backgroundColour,    //     m_hasBgCol
                          m_foregroundColour;    //     m_hasFgCol
@@ -2010,6 +2030,12 @@ private:
     wxSize GetDlgUnitBase() const;
 
 
+    // Cursor bundle for this window.
+    //
+    // When it is changed, m_cursor is also updated to preserve compatibility
+    // with the old code using it directly by calling WXUpdateCursor().
+    wxCursorBundle m_cursors;
+
     // number of Freeze() calls minus the number of Thaw() calls: we're frozen
     // (i.e. not being updated) if it is positive
     unsigned int m_freezeCount;
@@ -2085,10 +2111,30 @@ inline wxWindow *wxWindowBase::GetGrandParent() const
     return m_parent ? m_parent->GetParent() : nullptr;
 }
 
+inline const wxWindow* wxWindowBase::AsWindow(const wxWindowBase* win)
+{
+    return static_cast<const wxWindow*>(win);
+}
+
+inline wxWindow* wxWindowBase::AsWindow(wxWindowBase* win)
+{
+    return static_cast<wxWindow*>(win);
+}
+
+inline wxWindow* wxWindowBase::AsWindow()
+{
+    return static_cast<wxWindow*>(this);
+}
+
+inline const wxWindow* wxWindowBase::AsWindow() const
+{
+    return static_cast<const wxWindow*>(this);
+}
+
 template <typename T>
 void wxWindowBase::CallForEachChild(const T& fn)
 {
-    fn(static_cast<wxWindow*>(this));
+    fn(AsWindow());
 
     for ( auto& child : GetChildren() )
         child->CallForEachChild(fn);

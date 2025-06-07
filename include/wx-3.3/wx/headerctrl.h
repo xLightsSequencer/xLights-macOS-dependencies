@@ -369,7 +369,7 @@ private:
     // bring the column count in sync with the number of columns we store
     void UpdateColumnCount()
     {
-        SetColumnCount(static_cast<int>(m_cols.size()));
+        SetColumnCount(wxSsize(m_cols));
     }
 
 
@@ -420,7 +420,7 @@ public:
     unsigned int GetNewOrder() const { return m_order; }
     void SetNewOrder(unsigned int order) { m_order = order; }
 
-    virtual wxEvent *Clone() const override { return new wxHeaderCtrlEvent(*this); }
+    wxNODISCARD virtual wxEvent *Clone() const override { return new wxHeaderCtrlEvent(*this); }
 
 protected:
     // the column affected by the event

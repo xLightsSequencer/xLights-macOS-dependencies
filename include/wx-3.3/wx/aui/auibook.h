@@ -77,7 +77,7 @@ public:
     {
         m_dragSource = nullptr;
     }
-    wxEvent *Clone() const override { return new wxAuiNotebookEvent(*this); }
+    wxNODISCARD wxEvent *Clone() const override { return new wxAuiNotebookEvent(*this); }
 
     void SetDragSource(wxAuiNotebook* s) { m_dragSource = s; }
     wxAuiNotebook* GetDragSource() const { return m_dragSource; }
@@ -180,7 +180,7 @@ public:
     bool MovePage(size_t oldIdx, size_t newIdx);
     bool RemovePage(wxWindow* page);
     void RemovePageAt(size_t idx);
-    bool SetActivePage(wxWindow* page);
+    bool SetActivePage(const wxWindow* page);
     bool SetActivePage(size_t page);
     void SetNoneActive();
     int GetActivePage() const;
@@ -366,6 +366,10 @@ public:
     // Also updates rowEnd for all pages in m_pages when using multiple rows.
     void DoApplyRect(const wxRect& rect, int tabCtrlHeight);
 
+    // Another internal helper: return the hint rectangle corresponding to this
+    // tab control in screen coordinates.
+    wxRect GetHintScreenRect() const;
+
 protected:
     // choose the default border for this window
     virtual wxBorder GetDefaultBorder() const override { return wxBORDER_NONE; }
@@ -409,6 +413,10 @@ private:
     wxDECLARE_CLASS(wxAuiTabCtrl);
     wxDECLARE_EVENT_TABLE();
 #endif
+
+    // Rectangle corresponding to the full tab control area, including both
+    // tabs (which is this window) and the page area.
+    wxRect m_fullRect;
 };
 
 
