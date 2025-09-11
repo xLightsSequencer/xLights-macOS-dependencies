@@ -22,7 +22,9 @@ public:
     {
         Style_None              = 0x00,
         Style_WithThousandsSep  = 0x01,
-        Style_NoTrailingZeroes  = 0x02      // Only for floating point numbers
+        Style_NoTrailingZeroes  = 0x02,     // Only for floating point numbers
+        Style_SignPlus          = 0x04,
+        Style_SignSpace         = 0x08,
     };
 
     // Format a number as a string. By default, the thousands separator is
@@ -68,6 +70,11 @@ public:
     // function returns true.
     static bool GetThousandsSeparatorIfUsed(wxChar *sep);
 
+    // Remove trailing zeroes and, if there is nothing left after it, the
+    // decimal separator itself from a string representing a floating point
+    // number. Also used by ToString().
+    static void RemoveTrailingZeroes(wxString& s);
+
 private:
     // Post-process the string representing an integer.
     static wxString PostProcessIntString(wxString s, int style);
@@ -76,10 +83,9 @@ private:
     // the separators. This is used by ToString(Style_WithThousandsSep).
     static void AddThousandsSeparators(wxString& s);
 
-    // Remove trailing zeroes and, if there is nothing left after it, the
-    // decimal separator itself from a string representing a floating point
-    // number. Also used by ToString().
-    static void RemoveTrailingZeroes(wxString& s);
+    // Add the sign prefix to a string representing a number without
+    // the prefix. This is used by ToString().
+    static void AddSignPrefix(wxString& s, int style);
 
     // Remove all thousands separators from a string representing a number.
     static void RemoveThousandsSeparators(wxString& s);
