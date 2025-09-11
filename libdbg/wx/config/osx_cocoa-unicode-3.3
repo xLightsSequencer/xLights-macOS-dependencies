@@ -947,8 +947,8 @@ bindir="${exec_prefix}/bin"
 [ -z "$output_option_prefix"        ] || echo $prefix
 [ -z "$output_option_exec_prefix"   ] || echo $exec_prefix
 [ -z "$output_option_release"       ] || echo "3.3"
-[ -z "$output_option_version"       ] || echo "3.3.0"
-[ -z "$output_option_version_full"  ] || echo "3.3.0.0"
+[ -z "$output_option_version"       ] || echo "3.3.2"
+[ -z "$output_option_version_full"  ] || echo "3.3.2.0"
 [ -z "$output_option_basename"      ] || echo "wx_osx_cocoau"
 [ -z "$output_option_cc"            ] || echo "clang -mmacosx-version-min=11.0"
 [ -z "$output_option_cxx"           ] || echo "clang++ -std=gnu++17 -mmacosx-version-min=11.0"
@@ -1029,11 +1029,11 @@ ldflags_gl=""
 
 ldlibs_base="-lwxjpeg-3.3 -lwxpng-3.3 -lwxwebp-3.3 -lwxregexu-3.3 -lwxexpat-3.3 -lwxzlib-3.3 -framework Security -lpthread -liconv -lcurl"
 ldlibs_core="-framework WebKit "
-ldlibs_gl="-framework OpenGL -framework AGL"
+ldlibs_gl="-framework OpenGL"
 ldlibs_html=""
 ldlibs_media=""
 ldlibs_xml=""
-ldlibs_stc=" -lwxscintilla-3.3 -lwxlexilla-3.3 "
+ldlibs_stc=" "
 ldlibs_webview=""
 
 
