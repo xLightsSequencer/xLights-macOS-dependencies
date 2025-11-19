@@ -131,7 +131,7 @@ public:
         return m_kind;
     }
 
-    void MakeStretchable()
+    virtual void MakeStretchable()
     {
         wxASSERT_MSG( IsSeparator(), "only separators can be stretchable" );
 
@@ -508,6 +508,12 @@ public:
     // Called when the mouse cursor enters a tool bitmap.
     // Argument is wxID_ANY if mouse is exiting the toolbar.
     virtual void OnMouseEnter(int toolid);
+
+#if wxUSE_HELP
+    // override to return the ID of the tool at the given point
+    virtual int GetHelpIdAtPoint(const wxPoint& pt) override;
+#endif // wxUSE_HELP
+
 
     // more deprecated functions
     // -------------------------
