@@ -23,5 +23,5 @@ jobs:
         brew update
         brew install automake libtool cmake nasm
     - name: Build
-      run: build.sh
+      run: ./build.sh
     
