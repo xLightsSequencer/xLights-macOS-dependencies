@@ -13,8 +13,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-          submodules: 'true'
-          depth: 0
+          submodules: 'false'
     - uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: latest-stable
