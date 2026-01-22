@@ -48,4 +48,4 @@ mkdir -p output
 
 cd ..
 
-tar  --exclude-vcs --exclude submodules --exclude build.sh --exclude env.sh --exclude output -c xLights-macOS-dependencies | zstd -18 -T0 -f -o xLights-macOS-dependencies/output/xLights-macOS-dependencies.tar.zst
+tar  --exclude-vcs --exclude submodules --exclude .github --exclude build.sh --exclude env.sh --exclude output -c xLights-macOS-dependencies | zstd -18 -T0 -f -o xLights-macOS-dependencies/output/xLights-macOS-dependencies.tar.zst
