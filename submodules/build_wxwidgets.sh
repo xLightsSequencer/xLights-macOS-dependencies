@@ -59,5 +59,8 @@ make -j ${NUMCPUS}
 rm -rf ${BASE_DEPS_DIR}/libdbg/libwx*.dylib
 make install
 
+cd ..
+git status --ignored -s . | colrm 1 2 | xargs rm  -rf
+
 
 cd ../..
