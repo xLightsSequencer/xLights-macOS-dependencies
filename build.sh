@@ -16,6 +16,8 @@ mkdir -p ${BASE_DEPS_DIR}/bin
 mkdir -p ${BASE_DEPS_DIR}/share
 mkdir -p ${BASE_DEPS_DIR}/include
 
+git submodule update --init --force
+
 
 cd submodules
 
