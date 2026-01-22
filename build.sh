@@ -33,7 +33,7 @@ cd submodules
 
 ./build_libxlswriter.sh 2>&1 | tee ./build_libxlswriter.log
 
-./build_libusb.sh 2>&1 | tee ./build_libusb.log
+./build_hidapi.sh 2>&1 | tee ./build_hidapi.log
 
 ./build_ffmpeg.sh 2>&1 | tee ./build_ffmpeg.log
 
