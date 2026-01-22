@@ -1,0 +1,7 @@
+lib
+libdbg
+share
+include
+bin
+output
+submodules/*.log
