@@ -5,7 +5,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BASE_DEPS_DIR=$( dirname -- "${SCRIPT_DIR}" )
 
-cd libusb
+cd hidapi
 
 export CFLAGS="-g -O3 -flto=thin -Wall -fno-stack-protector -fno-common ${XL_TARGETS} ${OSX_VERSION_MIN} "
 ./bootstrap

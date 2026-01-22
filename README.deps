@@ -1,0 +1,28 @@
+wxwidgets: xlights_2026.01
+
+log4cpp:
+Currently using 1.1.5  (REL_1.1.5_Dec_01_2025)
+
+ispc:
+Currently using v1.28.2
+
+ZSTD:
+Currently using  v1.5.7
+
+liquidfun:
+Currently using lastest master, but hasn't been updated in years
+
+SDL:
+Currently using release-2.32.10
+
+LUA:
+Currently using v5.4.8
+
+libxlswriter:
+Currently using v1.2.4
+
+libusb/libhidapi:
+Currently using 0.15.0
+
+ffmpeg:
+Currently using n6.1.4
