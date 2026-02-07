@@ -1,10 +1,10 @@
-wxwidgets: xlights_2026.01
+wxwidgets: xlights_2026.02
 
 log4cpp:
 Currently using 1.1.5  (REL_1.1.5_Dec_01_2025)
 
 ispc:
-Currently using v1.28.2
+Currently using v1.30.0
 
 ZSTD:
 Currently using  v1.5.7
