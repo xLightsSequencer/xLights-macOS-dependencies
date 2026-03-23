@@ -28,7 +28,7 @@ export CFLAGS="-g"
             --disable-xrc --disable-stc --disable-ribbon --disable-htmlhelp --disable-mediactrl \
             --with-cxx=17 --enable-cxx11 --enable-std_containers --enable-std_string_conv_in_wxstring \
             --without-liblzma  --with-expat=builtin --with-zlib=builtin --with-libjpeg=builtin  --without-libtiff \
-            --disable-sys-libs \
+            --disable-sys-libs --enable-utf8 --enable-utf8only \
             --enable-backtrace --enable-exceptions --disable-shared
 make -j ${NUMCPUS}
 make install
@@ -53,7 +53,7 @@ export CFLAGS="-g"
             --disable-xrc --disable-stc --disable-ribbon --disable-htmlhelp --disable-mediactrl \
             --with-cxx=17 --enable-cxx11 --enable-std_containers --enable-std_string_conv_in_wxstring \
             --without-liblzma  --with-expat=builtin --with-zlib=builtin --with-libjpeg=builtin  --without-libtiff \
-            --disable-sys-libs \
+            --disable-sys-libs --enable-utf8 --enable-utf8only \
             --enable-backtrace --enable-exceptions
 make -j ${NUMCPUS}
 rm -rf ${BASE_DEPS_DIR}/libdbg/libwx*.dylib
