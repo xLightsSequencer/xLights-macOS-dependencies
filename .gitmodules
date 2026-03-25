@@ -22,6 +22,3 @@
 [submodule "submodules/hidapi"]
 	path = submodules/hidapi
 	url = https://github.com/libusb/hidapi
-[submodule "submodules/log4cpp"]
-	path = submodules/log4cpp
-	url = https://git.code.sf.net/p/log4cpp/codegit

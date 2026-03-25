@@ -26,8 +26,6 @@ cd submodules
 
 ./build_zstd.sh 2>&1 | tee ./build_zstd.log
 
-./build_log4cpp.sh 2>&1 | tee ./build_log4cpp.log
-
 ./build_liquidfun.sh 2>&1 | tee ./build_liquidfun.log
 
 ./build_sdl.sh 2>&1 | tee ./build_sdl.log
