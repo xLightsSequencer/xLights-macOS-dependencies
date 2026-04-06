@@ -22,3 +22,6 @@
 [submodule "submodules/hidapi"]
 	path = submodules/hidapi
 	url = https://github.com/libusb/hidapi
+[submodule "submodules/curl"]
+	path = submodules/curl
+	url = https://github.com/curl/curl.git

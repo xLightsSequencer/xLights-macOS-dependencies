@@ -13,6 +13,8 @@ sysctl -a | grep hw.perflevel
 
 mkdir -p ${BASE_DEPS_DIR}/lib
 mkdir -p ${BASE_DEPS_DIR}/libdbg
+mkdir -p ${BASE_DEPS_DIR}/lib-ios
+mkdir -p ${BASE_DEPS_DIR}/libdbg-ios
 mkdir -p ${BASE_DEPS_DIR}/bin
 mkdir -p ${BASE_DEPS_DIR}/share
 mkdir -p ${BASE_DEPS_DIR}/include
@@ -38,7 +40,16 @@ cd submodules
 
 ./build_ffmpeg.sh 2>&1 | tee ./build_ffmpeg.log
 
+./build_curl.sh 2>&1 | tee ./build_curl.log
+
 ./install_ispc.sh 2>&1 | tee ./install_ispc.log
+
+# --- iOS builds (arm64 only, libraries needed for iPad app) ---
+./build_zstd_ios.sh 2>&1 | tee ./build_zstd_ios.log
+./build_liquidfun_ios.sh 2>&1 | tee ./build_liquidfun_ios.log
+./build_lua_ios.sh 2>&1 | tee ./build_lua_ios.log
+./build_libxlswriter_ios.sh 2>&1 | tee ./build_libxlswriter_ios.log
+./build_curl_ios.sh 2>&1 | tee ./build_curl_ios.log
 
 
 cd ..

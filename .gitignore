@@ -1,5 +1,7 @@
 lib
 libdbg
+lib-ios
+libdbg-ios
 share
 include
 bin
