@@ -52,6 +52,9 @@ cd submodules
 ./build_curl_ios.sh 2>&1 | tee ./build_curl_ios.log
 
 
+./build_angle.sh 2>&1 | tee ./build_angle.log
+
+
 cd ..
 
 
