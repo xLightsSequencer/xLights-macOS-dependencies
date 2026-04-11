@@ -21,4 +21,14 @@ export IOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
 export IOS_VERSION_MIN="-miphoneos-version-min=${IOS_MIN_VERSION}"
 export IOS_ARM64_TARGETS="-target arm64-apple-ios${IOS_MIN_VERSION} -arch arm64 -isysroot ${IOS_SDK}"
 
+# --- iOS Simulator targets (arm64 only — matches Apple Silicon host) ---
+# The -simulator triple is distinct from the device triple even at the same
+# arch, so device and simulator .a files cannot be lipo'd together. They must
+# be built separately and installed into parallel lib-ios-sim/libdbg-ios-sim
+# trees; xLights.xcodeproj selects between them with
+# LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*].
+export IOS_SIM_SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+export IOS_SIM_VERSION_MIN="-mios-simulator-version-min=${IOS_MIN_VERSION}"
+export IOS_SIM_ARM64_TARGETS="-target arm64-apple-ios${IOS_MIN_VERSION}-simulator -arch arm64 -isysroot ${IOS_SIM_SDK}"
+
 NUMCPUS=$(sysctl -n hw.ncpu)

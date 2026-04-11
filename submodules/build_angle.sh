@@ -1,10 +1,23 @@
 #!/bin/bash
 
-# Build ANGLE (Almost Native Graphics Layer Engine) with Metal backend
-# Produces static libANGLE_egl.a and libANGLE_glesv2.a for macOS (universal) and iOS (arm64)
+# Install ANGLE (Almost Native Graphics Layer Engine) for xLights.
 #
-# ANGLE requires Google's depot_tools (gn, ninja, gclient).
-# First-time setup is slow (~2GB download for deps).
+# Building ANGLE from source via depot_tools/gn/ninja was unreliable on CI,
+# so we download pre-built binaries from jeremyfa/build-angle instead.
+#
+# Release layout:
+#   angle-mac-universal.zip  -> include/, lib/libEGL.dylib, lib/libGLESv2.dylib
+#                               (universal x86_64 + arm64)
+#   angle-ios-universal.zip  -> include/, libEGL.xcframework, libGLESv2.xcframework
+#                               (each xcframework contains ios-arm64 device and
+#                                ios-arm64_x86_64-simulator slices)
+#
+# Installs to:
+#   ${BASE_DEPS_DIR}/lib/{libEGL,libGLESv2}.dylib             (macOS release)
+#   ${BASE_DEPS_DIR}/libdbg/{libEGL,libGLESv2}.dylib          (macOS debug — same binary)
+#   ${BASE_DEPS_DIR}/lib-ios/{libEGL,libGLESv2}.xcframework
+#   ${BASE_DEPS_DIR}/libdbg-ios/{libEGL,libGLESv2}.xcframework
+#   ${BASE_DEPS_DIR}/include/{EGL,GLES2,GLES3,KHR}/
 
 set -e
 
@@ -13,215 +26,104 @@ set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BASE_DEPS_DIR=$( dirname -- "${SCRIPT_DIR}" )
 
-# --- Install/update depot_tools ---
-if [ ! -d "depot_tools" ]; then
-    git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-else
-    cd depot_tools
-    git pull --rebase || true
-    cd ..
-fi
-export PATH="${SCRIPT_DIR}/depot_tools:$PATH"
+# Pin to a specific upstream build. Bump this tag to update ANGLE.
+ANGLE_TAG="angle-97d33bc"
+ANGLE_BASE_URL="https://github.com/jeremyfa/build-angle/releases/download/${ANGLE_TAG}"
 
-# --- Fetch ANGLE source + dependencies ---
-if [ ! -d "angle" ]; then
-    mkdir -p angle
-    cd angle
-    fetch --no-history angle
-    cd ..
-else
-    cd angle
-    git pull --rebase || true
-    gclient sync --no-history
-    cd ..
-fi
+CACHE_DIR="${SCRIPT_DIR}/angle-prebuilt/${ANGLE_TAG}"
+MAC_ZIP="${CACHE_DIR}/angle-mac-universal.zip"
+IOS_ZIP="${CACHE_DIR}/angle-ios-universal.zip"
+MAC_EXTRACT="${CACHE_DIR}/mac"
+IOS_EXTRACT="${CACHE_DIR}/ios"
 
-cd angle
+mkdir -p "${CACHE_DIR}"
 
-# Common GN args for Metal-only static build
-COMMON_GN_ARGS='
-is_debug = false
-is_component_build = false
-angle_build_all = false
-angle_build_tests = false
-angle_enable_metal = true
-angle_enable_vulkan = false
-angle_enable_gl = false
-angle_enable_gl_desktop_backend = false
-angle_enable_d3d9 = false
-angle_enable_d3d11 = false
-angle_enable_null = false
-angle_enable_swiftshader = false
-angle_enable_wgpu = false
-angle_enable_abseil = false
-angle_has_histograms = false
-use_custom_libcxx = false
-'
-
-# Helper: collect all .a files from a build dir and merge into two consumer libraries
-# Usage: merge_angle_libs <build_obj_dir> <output_dir>
-merge_angle_libs() {
-    local BUILD_OBJ_DIR="$1"
-    local OUTPUT_DIR="$2"
-    mkdir -p "${OUTPUT_DIR}"
-
-    # Find ALL static libs produced by the build
-    local ALL_LIBS
-    ALL_LIBS=$(find "${BUILD_OBJ_DIR}" -name "*.a" 2>/dev/null)
-    if [ -z "$ALL_LIBS" ]; then
-        echo "WARNING: No .a files found in ${BUILD_OBJ_DIR}"
-        return 1
-    fi
-
-    # Separate EGL from the rest
-    local EGL_LIB
-    EGL_LIB=$(echo "$ALL_LIBS" | grep "libEGL_static\.a" | head -1)
-    local GLESV2_LIBS
-    GLESV2_LIBS=$(echo "$ALL_LIBS" | grep -v "libEGL_static\.a")
-
-    # Merge all non-EGL libs into a single libANGLE_glesv2.a
-    if [ -n "$GLESV2_LIBS" ]; then
-        # shellcheck disable=SC2086
-        libtool -static -o "${OUTPUT_DIR}/libANGLE_glesv2.a" $GLESV2_LIBS
-        echo "  Created ${OUTPUT_DIR}/libANGLE_glesv2.a"
-    fi
-
-    # Copy EGL as libANGLE_egl.a
-    if [ -n "$EGL_LIB" ]; then
-        cp "$EGL_LIB" "${OUTPUT_DIR}/libANGLE_egl.a"
-        echo "  Created ${OUTPUT_DIR}/libANGLE_egl.a"
+download() {
+    local url="$1"
+    local dest="$2"
+    if [ -f "${dest}" ]; then
+        echo "  Using cached $(basename "${dest}")"
+    else
+        echo "  Downloading $(basename "${dest}")"
+        curl -L --fail --retry 3 -o "${dest}.part" "${url}"
+        mv "${dest}.part" "${dest}"
     fi
 }
 
-# --- macOS arm64 Release ---
-echo "=== Building ANGLE for macOS arm64 ==="
-gn gen out/macos-arm64 --args="
-${COMMON_GN_ARGS}
-target_os = \"mac\"
-target_cpu = \"arm64\"
-mac_deployment_target = \"${MACOSX_DEPLOYMENT_TARGET}\"
-"
-autoninja -C out/macos-arm64 angle_static
+echo "=== Fetching ANGLE ${ANGLE_TAG} ==="
+download "${ANGLE_BASE_URL}/angle-mac-universal.zip" "${MAC_ZIP}"
+download "${ANGLE_BASE_URL}/angle-ios-universal.zip" "${IOS_ZIP}"
 
-# --- macOS x86_64 Release ---
-echo "=== Building ANGLE for macOS x86_64 ==="
-gn gen out/macos-x64 --args="
-${COMMON_GN_ARGS}
-target_os = \"mac\"
-target_cpu = \"x64\"
-mac_deployment_target = \"${MACOSX_DEPLOYMENT_TARGET}\"
-"
-autoninja -C out/macos-x64 angle_static
+echo "=== Extracting ==="
+rm -rf "${MAC_EXTRACT}" "${IOS_EXTRACT}"
+mkdir -p "${MAC_EXTRACT}" "${IOS_EXTRACT}"
+unzip -q "${MAC_ZIP}" -d "${MAC_EXTRACT}"
+unzip -q "${IOS_ZIP}" -d "${IOS_EXTRACT}"
 
-# --- Create universal macOS static libraries ---
-echo "=== Creating universal macOS libraries ==="
-mkdir -p out/macos-universal
+# --- Patch missing simulator Info.plist ---
+# The upstream zip ships the simulator slice of each xcframework *without* an
+# Info.plist, which causes Xcode to fail framework embedding with:
+#   "Framework ... did not contain an Info.plist"
+# Clone the device slice's plist and rewrite the platform-specific keys.
+patch_sim_plist() {
+    local FW_NAME="$1"
+    local DEV_FW="${IOS_EXTRACT}/${FW_NAME}.xcframework/ios-arm64/${FW_NAME}.framework"
+    local SIM_FW="${IOS_EXTRACT}/${FW_NAME}.xcframework/ios-arm64_x86_64-simulator/${FW_NAME}.framework"
+    local DEV_PLIST="${DEV_FW}/Info.plist"
+    local SIM_PLIST="${SIM_FW}/Info.plist"
 
-# Find all .a names from the arm64 build and lipo them with x64 counterparts
-while IFS= read -r ARM64_LIB; do
-    LIB_NAME=$(basename "$ARM64_LIB")
-    # Find the matching x64 lib by name
-    X64_LIB=$(find out/macos-x64/obj -name "$LIB_NAME" 2>/dev/null | head -1)
-    if [ -n "$X64_LIB" ]; then
-        lipo -create "$ARM64_LIB" "$X64_LIB" -output "out/macos-universal/${LIB_NAME}"
-        echo "  Created universal ${LIB_NAME}"
-    else
-        cp "$ARM64_LIB" "out/macos-universal/${LIB_NAME}"
-        echo "  Copied arm64-only ${LIB_NAME}"
+    if [ -f "${SIM_PLIST}" ]; then
+        return 0
     fi
-done < <(find out/macos-arm64/obj -name "*.a" 2>/dev/null)
+    if [ ! -f "${DEV_PLIST}" ]; then
+        echo "WARNING: no device Info.plist template at ${DEV_PLIST}"
+        return 1
+    fi
 
-# Merge universal libs into consumer-facing libraries
-EGL_LIB=$(find out/macos-universal -name "libEGL_static.a" 2>/dev/null | head -1)
-GLESV2_LIBS=$(find out/macos-universal -name "*.a" ! -name "libEGL_static.a" ! -name "libANGLE_egl.a" ! -name "libANGLE_glesv2.a" 2>/dev/null)
-if [ -n "$GLESV2_LIBS" ]; then
-    # shellcheck disable=SC2086
-    libtool -static -o out/macos-universal/libANGLE_glesv2.a $GLESV2_LIBS
-fi
-if [ -n "$EGL_LIB" ]; then
-    cp "$EGL_LIB" out/macos-universal/libANGLE_egl.a
-fi
+    cp "${DEV_PLIST}" "${SIM_PLIST}"
+    plutil -replace CFBundleSupportedPlatforms -json '["iPhoneSimulator"]' "${SIM_PLIST}"
+    plutil -replace DTPlatformName -string iphonesimulator "${SIM_PLIST}"
+    # DTSDKName looks like "iphoneos18.5" — swap the prefix to iphonesimulator.
+    local DEV_SDK_NAME
+    DEV_SDK_NAME=$(plutil -extract DTSDKName raw "${DEV_PLIST}" 2>/dev/null || echo "iphoneos")
+    plutil -replace DTSDKName -string "iphonesimulator${DEV_SDK_NAME#iphoneos}" "${SIM_PLIST}"
+    echo "  Synthesized ${SIM_PLIST}"
+}
+patch_sim_plist libEGL
+patch_sim_plist libGLESv2
 
-# Install macOS release to deps directory
-cp out/macos-universal/libANGLE_glesv2.a "${BASE_DEPS_DIR}/lib/"
-cp out/macos-universal/libANGLE_egl.a "${BASE_DEPS_DIR}/lib/"
+# --- macOS dylibs (universal x86_64 + arm64) ---
+echo "=== Installing macOS dylibs ==="
+mkdir -p "${BASE_DEPS_DIR}/lib" "${BASE_DEPS_DIR}/libdbg"
+cp "${MAC_EXTRACT}/lib/libEGL.dylib"    "${BASE_DEPS_DIR}/lib/"
+cp "${MAC_EXTRACT}/lib/libGLESv2.dylib" "${BASE_DEPS_DIR}/lib/"
+# No separate debug build — use the same binaries for libdbg/.
+cp "${MAC_EXTRACT}/lib/libEGL.dylib"    "${BASE_DEPS_DIR}/libdbg/"
+cp "${MAC_EXTRACT}/lib/libGLESv2.dylib" "${BASE_DEPS_DIR}/libdbg/"
 
-# --- macOS Debug build (arm64 only for speed) ---
-echo "=== Building ANGLE for macOS arm64 Debug ==="
-gn gen out/macos-arm64-dbg --args="
-${COMMON_GN_ARGS}
-is_debug = true
-target_os = \"mac\"
-target_cpu = \"arm64\"
-mac_deployment_target = \"${MACOSX_DEPLOYMENT_TARGET}\"
-"
-autoninja -C out/macos-arm64-dbg angle_static
-merge_angle_libs out/macos-arm64-dbg/obj out/macos-debug
+# --- iOS xcframeworks (device + simulator) ---
+echo "=== Installing iOS xcframeworks ==="
+mkdir -p "${BASE_DEPS_DIR}/lib-ios" "${BASE_DEPS_DIR}/libdbg-ios"
+for fw in libEGL.xcframework libGLESv2.xcframework; do
+    rm -rf "${BASE_DEPS_DIR}/lib-ios/${fw}"    "${BASE_DEPS_DIR}/libdbg-ios/${fw}"
+    cp -R  "${IOS_EXTRACT}/${fw}" "${BASE_DEPS_DIR}/lib-ios/"
+    cp -R  "${IOS_EXTRACT}/${fw}" "${BASE_DEPS_DIR}/libdbg-ios/"
+done
 
-cp out/macos-debug/libANGLE_glesv2.a "${BASE_DEPS_DIR}/libdbg/"
-cp out/macos-debug/libANGLE_egl.a "${BASE_DEPS_DIR}/libdbg/"
-
-# --- iOS arm64 Release ---
-echo "=== Building ANGLE for iOS arm64 ==="
-gn gen out/ios-arm64 --args="
-${COMMON_GN_ARGS}
-target_os = \"ios\"
-target_cpu = \"arm64\"
-target_environment = \"device\"
-ios_deployment_target = \"${IOS_MIN_VERSION}\"
-"
-autoninja -C out/ios-arm64 angle_static
-merge_angle_libs out/ios-arm64/obj out/ios-release
-
-cp out/ios-release/libANGLE_glesv2.a "${BASE_DEPS_DIR}/lib-ios/"
-cp out/ios-release/libANGLE_egl.a "${BASE_DEPS_DIR}/lib-ios/"
-
-# --- iOS arm64 Debug ---
-echo "=== Building ANGLE for iOS arm64 Debug ==="
-gn gen out/ios-arm64-dbg --args="
-${COMMON_GN_ARGS}
-is_debug = true
-target_os = \"ios\"
-target_cpu = \"arm64\"
-target_environment = \"device\"
-ios_deployment_target = \"${IOS_MIN_VERSION}\"
-"
-autoninja -C out/ios-arm64-dbg angle_static
-merge_angle_libs out/ios-arm64-dbg/obj out/ios-debug
-
-cp out/ios-debug/libANGLE_glesv2.a "${BASE_DEPS_DIR}/libdbg-ios/"
-cp out/ios-debug/libANGLE_egl.a "${BASE_DEPS_DIR}/libdbg-ios/"
-
-# --- Install headers ---
+# --- Headers ---
 echo "=== Installing ANGLE headers ==="
-mkdir -p "${BASE_DEPS_DIR}/include/EGL"
-mkdir -p "${BASE_DEPS_DIR}/include/GLES2"
-mkdir -p "${BASE_DEPS_DIR}/include/GLES3"
-mkdir -p "${BASE_DEPS_DIR}/include/KHR"
-mkdir -p "${BASE_DEPS_DIR}/include/ANGLE"
+mkdir -p "${BASE_DEPS_DIR}/include/EGL" \
+         "${BASE_DEPS_DIR}/include/GLES2" \
+         "${BASE_DEPS_DIR}/include/GLES3" \
+         "${BASE_DEPS_DIR}/include/KHR"
+cp "${MAC_EXTRACT}/include/EGL/"*.h    "${BASE_DEPS_DIR}/include/EGL/"
+cp "${MAC_EXTRACT}/include/GLES2/"*.h  "${BASE_DEPS_DIR}/include/GLES2/"
+cp "${MAC_EXTRACT}/include/GLES3/"*.h  "${BASE_DEPS_DIR}/include/GLES3/"
+cp "${MAC_EXTRACT}/include/KHR/"*.h    "${BASE_DEPS_DIR}/include/KHR/"
 
-cp include/EGL/egl.h "${BASE_DEPS_DIR}/include/EGL/"
-cp include/EGL/eglext.h "${BASE_DEPS_DIR}/include/EGL/"
-cp include/EGL/eglext_angle.h "${BASE_DEPS_DIR}/include/EGL/"
-cp include/EGL/eglplatform.h "${BASE_DEPS_DIR}/include/EGL/"
-cp include/GLES2/gl2.h "${BASE_DEPS_DIR}/include/GLES2/"
-cp include/GLES2/gl2ext.h "${BASE_DEPS_DIR}/include/GLES2/"
-cp include/GLES2/gl2ext_angle.h "${BASE_DEPS_DIR}/include/GLES2/"
-cp include/GLES2/gl2platform.h "${BASE_DEPS_DIR}/include/GLES2/"
-cp include/GLES3/gl3.h "${BASE_DEPS_DIR}/include/GLES3/"
-cp include/GLES3/gl31.h "${BASE_DEPS_DIR}/include/GLES3/"
-cp include/GLES3/gl32.h "${BASE_DEPS_DIR}/include/GLES3/"
-cp include/GLES3/gl3platform.h "${BASE_DEPS_DIR}/include/GLES3/"
-cp include/KHR/khrplatform.h "${BASE_DEPS_DIR}/include/KHR/"
-cp include/angle_gl.h "${BASE_DEPS_DIR}/include/ANGLE/"
-cp include/export.h "${BASE_DEPS_DIR}/include/ANGLE/"
-
-cd ..
-
-echo "=== ANGLE build complete ==="
-echo "Libraries installed to:"
-echo "  macOS release: ${BASE_DEPS_DIR}/lib/libANGLE_egl.a, libANGLE_glesv2.a"
-echo "  macOS debug:   ${BASE_DEPS_DIR}/libdbg/libANGLE_egl.a, libANGLE_glesv2.a"
-echo "  iOS release:   ${BASE_DEPS_DIR}/lib-ios/libANGLE_egl.a, libANGLE_glesv2.a"
-echo "  iOS debug:     ${BASE_DEPS_DIR}/libdbg-ios/libANGLE_egl.a, libANGLE_glesv2.a"
-echo "Headers installed to: ${BASE_DEPS_DIR}/include/{EGL,GLES2,GLES3,KHR,ANGLE}"
+echo "=== ANGLE ${ANGLE_TAG} install complete ==="
+echo "  macOS release: ${BASE_DEPS_DIR}/lib/{libEGL,libGLESv2}.dylib"
+echo "  macOS debug:   ${BASE_DEPS_DIR}/libdbg/{libEGL,libGLESv2}.dylib"
+echo "  iOS release:   ${BASE_DEPS_DIR}/lib-ios/{libEGL,libGLESv2}.xcframework"
+echo "  iOS debug:     ${BASE_DEPS_DIR}/libdbg-ios/{libEGL,libGLESv2}.xcframework"
+echo "  Headers:       ${BASE_DEPS_DIR}/include/{EGL,GLES2,GLES3,KHR}/"

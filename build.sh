@@ -15,6 +15,8 @@ mkdir -p ${BASE_DEPS_DIR}/lib
 mkdir -p ${BASE_DEPS_DIR}/libdbg
 mkdir -p ${BASE_DEPS_DIR}/lib-ios
 mkdir -p ${BASE_DEPS_DIR}/libdbg-ios
+mkdir -p ${BASE_DEPS_DIR}/lib-ios-sim
+mkdir -p ${BASE_DEPS_DIR}/libdbg-ios-sim
 mkdir -p ${BASE_DEPS_DIR}/bin
 mkdir -p ${BASE_DEPS_DIR}/share
 mkdir -p ${BASE_DEPS_DIR}/include

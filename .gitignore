@@ -2,8 +2,11 @@ lib
 libdbg
 lib-ios
 libdbg-ios
+lib-ios-sim
+libdbg-ios-sim
 share
 include
 bin
 output
 submodules/*.log
+submodules/angle-prebuilt
