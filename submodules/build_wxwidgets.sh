@@ -22,7 +22,7 @@ export CC=clang
 export CPP="clang -E"
 export CFLAGS="-g"
 ../configure  --disable-debug_flag --enable-debug_info --enable-optimise --prefix=${BASE_DEPS_DIR} --enable-universal_binary=${BINARY_PLATFORMS} \
-            --with-osx_cocoa --with-macosx-version-min=11.0 --disable-dependency-tracking \
+            --with-osx_cocoa --with-macosx-version-min=${MACOSX_DEPLOYMENT_TARGET} --disable-dependency-tracking \
             --disable-compat30  --enable-mimetype --enable-aui --with-opengl \
             --enable-webview --enable-webviewwebkit --disable-mdi --disable-mdidoc --disable-loggui \
             --disable-xrc --disable-stc --disable-ribbon --disable-htmlhelp --disable-mediactrl \
@@ -47,7 +47,7 @@ export CPP="clang -E"
 export CFLAGS="-g"
 ../configure  --prefix=${BASE_DEPS_DIR} --libdir=${BASE_DEPS_DIR}/libdbg \
             --enable-debug --enable-debug_info --disable-optimise --enable-universal_binary=${BINARY_PLATFORMS} \
-            --with-osx_cocoa --with-macosx-version-min=11.0 --disable-dependency-tracking \
+            --with-osx_cocoa --with-macosx-version-min=${MACOSX_DEPLOYMENT_TARGET} --disable-dependency-tracking \
             --disable-compat30  --enable-mimetype --enable-aui --with-opengl \
             --enable-webview --enable-webviewwebkit --disable-mdi --disable-mdidoc --disable-loggui \
             --disable-xrc --disable-stc --disable-ribbon --disable-htmlhelp --disable-mediactrl \
