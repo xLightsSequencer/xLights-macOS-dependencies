@@ -92,6 +92,24 @@ patch_sim_plist() {
 patch_sim_plist libEGL
 patch_sim_plist libGLESv2
 
+# --- Patch missing CFBundleShortVersionString ---
+# The upstream ANGLE Info.plists ship with CFBundleVersion but no
+# CFBundleShortVersionString, which App Store Connect rejects with
+# ITMS-90057 when the iPad app that embeds these frameworks is
+# submitted. Add the key to every framework slice's Info.plist.
+patch_short_version() {
+    local FW_NAME="$1"
+    for plist in "${IOS_EXTRACT}/${FW_NAME}.xcframework/"*"/${FW_NAME}.framework/Info.plist"; do
+        if [ -f "${plist}" ]; then
+            plutil -remove CFBundleShortVersionString "${plist}" 2>/dev/null || true
+            plutil -insert CFBundleShortVersionString -string "1.0" "${plist}"
+            echo "  Added CFBundleShortVersionString to ${plist}"
+        fi
+    done
+}
+patch_short_version libEGL
+patch_short_version libGLESv2
+
 # --- macOS dylibs (universal x86_64 + arm64) ---
 echo "=== Installing macOS dylibs ==="
 mkdir -p "${BASE_DEPS_DIR}/lib" "${BASE_DEPS_DIR}/libdbg"
