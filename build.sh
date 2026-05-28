@@ -56,6 +56,8 @@ cd submodules
 
 ./build_angle.sh 2>&1 | tee ./build_angle.log
 
+./build_klightmapper.sh 2>&1 | tee ./build_klightmapper.log
+
 
 cd ..
 

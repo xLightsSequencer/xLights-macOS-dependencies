@@ -10,3 +10,4 @@ bin
 output
 submodules/*.log
 submodules/angle-prebuilt
+submodules/klightmapper-prebuilt

@@ -1,7 +1,4 @@
-wxwidgets: xlights_2026.07
-
-log4cpp:
-Currently using 1.1.5  (REL_1.1.5_Dec_01_2025)
+wxwidgets: xlights_2026.10
 
 ispc:
 Currently using v1.30.0
@@ -25,4 +22,8 @@ libusb/libhidapi:
 Currently using 0.15.0
 
 ffmpeg:
-Currently using n6.1.4
+Currently using n6.1.5
+
+KLightMapper:
+Currently using v1.2.0
+Closed-source iOS light-mapping framework (camera-based pixel mapping).
