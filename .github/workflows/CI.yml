@@ -10,6 +10,8 @@ jobs:
   build:
 
     runs-on: macOS-26
+    permissions:
+      contents: write          # GITHUB_TOKEN needs this to manage the `latest` release
 
     steps:
     - uses: actions/checkout@v2
@@ -24,4 +26,14 @@ jobs:
         brew install automake libtool cmake nasm
     - name: Build
       run: ./build.sh
-    
+    # Publish the rolling "latest" ANGLE Swift package on every push to main:
+    # (re)build the `latest` prerelease with SHA-stamped assets and force-push
+    # the xLights-spm `latest` branch. Consumers track it via branch: "latest".
+    # Skipped on PRs / when SPM_REPO_TOKEN is absent.
+    - name: Publish Swift package (latest)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      env:
+        SPM_REPO_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: ./submodules/spm/publish.sh latest
+
