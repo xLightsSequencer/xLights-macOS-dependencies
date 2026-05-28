@@ -28,3 +28,59 @@ jobs:
          allowUpdates: true
          artifacts: "output/*"
          token: ${{ secrets.GITHUB_TOKEN }}
+    # Publish the ANGLE Swift package to xLightsSequencer/xLights-spm.
+    # The xcframework zips were just attached to this release; we regenerate
+    # Package.swift (from submodules/spm/Package.swift.in) with their URLs +
+    # checksums, refresh the vendored headers, and tag the package repo with a
+    # semver derived from this build's tag (xlights_2026.10 -> 2026.10.0).
+    #
+    # Requires repo secret SPM_REPO_TOKEN: a token with Contents:read/write on
+    # xLightsSequencer/xLights-spm (GITHUB_TOKEN is scoped to this repo only).
+    # Skipped (with a notice) when the secret is absent or there is no tag.
+    - name: Publish Swift package
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        SPM_REPO_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
+      run: |
+        set -e
+        if [ -z "${SPM_REPO_TOKEN}" ]; then
+          echo "::notice::SPM_REPO_TOKEN not set — skipping xLights-spm publish."
+          exit 0
+        fi
+
+        VER="${GITHUB_REF_NAME#xlights_}.0"          # xlights_2026.10 -> 2026.10.0
+        ASSET_BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+        echo "Publishing xLights-spm ${VER} (assets from ${GITHUB_REF_NAME})"
+
+        EGL_MAC_SHA=$(swift package compute-checksum output/libEGL-macos.xcframework.zip)
+        EGL_IOS_SHA=$(swift package compute-checksum output/libEGL-ios.xcframework.zip)
+        GLES_MAC_SHA=$(swift package compute-checksum output/libGLESv2-macos.xcframework.zip)
+        GLES_IOS_SHA=$(swift package compute-checksum output/libGLESv2-ios.xcframework.zip)
+
+        git clone --depth 1 "https://x-access-token:${SPM_REPO_TOKEN}@github.com/xLightsSequencer/xLights-spm.git" spm-repo
+        cd spm-repo
+
+        mkdir -p Sources/ANGLE/include
+        # Refresh vendored headers from this build.
+        rm -rf Sources/ANGLE/include/EGL Sources/ANGLE/include/GLES2 \
+               Sources/ANGLE/include/GLES3 Sources/ANGLE/include/KHR
+        cp -R ../include/EGL ../include/GLES2 ../include/GLES3 ../include/KHR Sources/ANGLE/include/
+        # SPM C target needs at least one source file.
+        [ -f Sources/ANGLE/shim.c ] || printf '// header-only umbrella target for ANGLE\n' > Sources/ANGLE/shim.c
+        [ -f .gitignore ] || printf '.build/\n*.xcframework/\n' > .gitignore
+
+        sed -e "s|__ASSET_BASE__|${ASSET_BASE}|g" \
+            -e "s|__LIBEGL_MACOS_SHA__|${EGL_MAC_SHA}|g" \
+            -e "s|__LIBEGL_IOS_SHA__|${EGL_IOS_SHA}|g" \
+            -e "s|__LIBGLESV2_MACOS_SHA__|${GLES_MAC_SHA}|g" \
+            -e "s|__LIBGLESV2_IOS_SHA__|${GLES_IOS_SHA}|g" \
+            ../submodules/spm/Package.swift.in > Package.swift
+
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git commit -m "ANGLE ${VER} (from ${GITHUB_REF_NAME})" || echo "No changes to commit"
+        git push origin HEAD:main
+        git tag -f "${VER}"
+        git push -f origin "${VER}"
+        echo "::notice::Published xLights-spm ${VER}"

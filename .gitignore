@@ -8,6 +8,7 @@ share
 include
 bin
 output
+spm-artifacts
 submodules/*.log
 submodules/angle-prebuilt
 submodules/klightmapper-prebuilt

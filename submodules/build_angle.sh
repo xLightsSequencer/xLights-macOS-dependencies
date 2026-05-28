@@ -139,9 +139,36 @@ cp "${MAC_EXTRACT}/include/GLES2/"*.h  "${BASE_DEPS_DIR}/include/GLES2/"
 cp "${MAC_EXTRACT}/include/GLES3/"*.h  "${BASE_DEPS_DIR}/include/GLES3/"
 cp "${MAC_EXTRACT}/include/KHR/"*.h    "${BASE_DEPS_DIR}/include/KHR/"
 
+# --- SPM xcframeworks (for Swift Package Manager consumers) ---
+# Package each lib as TWO xcframeworks: a macOS *library* slice and the iOS
+# *framework* xcframework. They can't be combined into one xcframework: Xcode
+# forbids mixing framework and library slices, and the prebuilt mac dylib can't
+# be re-id'd into a framework layout (no header padding to lengthen its
+# install_name). The mac dylib keeps its @rpath/<name>.dylib id, which matches
+# dylib-style embedding. Consumers link the correct pair per platform via
+# conditional dependencies in the xLights-spm Package.swift. Zips + checksums
+# are emitted to spm-artifacts/ for the release workflow to publish.
+echo "=== Building SPM xcframeworks ==="
+SPM_OUT="${BASE_DEPS_DIR}/spm-artifacts"
+rm -rf "${SPM_OUT}"
+mkdir -p "${SPM_OUT}"
+for FW in libEGL libGLESv2; do
+    xcodebuild -create-xcframework \
+        -library "${BASE_DEPS_DIR}/lib/${FW}.dylib" \
+        -output  "${SPM_OUT}/${FW}-macos.xcframework"
+    cp -R "${BASE_DEPS_DIR}/lib-ios/${FW}.xcframework" "${SPM_OUT}/${FW}-ios.xcframework"
+    for variant in macos ios; do
+        ( cd "${SPM_OUT}" && \
+          ditto -c -k --keepParent "${FW}-${variant}.xcframework" "${FW}-${variant}.xcframework.zip" )
+        swift package compute-checksum "${SPM_OUT}/${FW}-${variant}.xcframework.zip" \
+            > "${SPM_OUT}/${FW}-${variant}.xcframework.zip.sha256"
+    done
+done
+
 echo "=== ANGLE ${ANGLE_TAG} install complete ==="
 echo "  macOS release: ${BASE_DEPS_DIR}/lib/{libEGL,libGLESv2}.dylib"
 echo "  macOS debug:   ${BASE_DEPS_DIR}/libdbg/{libEGL,libGLESv2}.dylib"
 echo "  iOS release:   ${BASE_DEPS_DIR}/lib-ios/{libEGL,libGLESv2}.xcframework"
 echo "  iOS debug:     ${BASE_DEPS_DIR}/libdbg-ios/{libEGL,libGLESv2}.xcframework"
 echo "  Headers:       ${BASE_DEPS_DIR}/include/{EGL,GLES2,GLES3,KHR}/"
+echo "  SPM artifacts: ${BASE_DEPS_DIR}/spm-artifacts/{libEGL,libGLESv2}-{macos,ios}.xcframework.zip"

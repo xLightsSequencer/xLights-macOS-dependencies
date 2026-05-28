@@ -65,6 +65,10 @@ cd ..
 rm -rf output
 mkdir -p output
 
+# Stage the SPM xcframework zips (built by submodules/build_angle.sh) so the
+# release workflow uploads them as assets for the xLights-spm package.
+cp "${BASE_DEPS_DIR}/spm-artifacts/"*.xcframework.zip "${BASE_DEPS_DIR}/output/" 2>/dev/null || true
+
 cd ..
 
 tar  --exclude-vcs --exclude submodules --exclude .github --exclude build.sh --exclude env.sh --exclude output -c xLights-macOS-dependencies | zstd -18 -T0 -f -o xLights-macOS-dependencies/output/xLights-macOS-dependencies.tar.zst
