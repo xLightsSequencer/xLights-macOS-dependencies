@@ -25,3 +25,9 @@
 [submodule "submodules/curl"]
 	path = submodules/curl
 	url = https://github.com/curl/curl.git
+[submodule "submodules/glslang"]
+	path = submodules/glslang
+	url = https://github.com/KhronosGroup/glslang
+[submodule "submodules/SPIRV-Cross"]
+	path = submodules/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

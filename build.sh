@@ -46,17 +46,18 @@ cd submodules
 
 ./install_ispc.sh 2>&1 | tee ./install_ispc.log
 
+./build_shader_translate.sh 2>&1 | tee ./build_shader_translate.log
+
 # --- iOS builds (arm64 only, libraries needed for iPad app) ---
 ./build_zstd_ios.sh 2>&1 | tee ./build_zstd_ios.log
 ./build_liquidfun_ios.sh 2>&1 | tee ./build_liquidfun_ios.log
 ./build_lua_ios.sh 2>&1 | tee ./build_lua_ios.log
 ./build_libxlswriter_ios.sh 2>&1 | tee ./build_libxlswriter_ios.log
 ./build_curl_ios.sh 2>&1 | tee ./build_curl_ios.log
+./build_shader_translate_ios.sh 2>&1 | tee ./build_shader_translate_ios.log
 
 
 ./build_angle.sh 2>&1 | tee ./build_angle.log
-
-./build_klightmapper.sh 2>&1 | tee ./build_klightmapper.log
 
 
 cd ..
