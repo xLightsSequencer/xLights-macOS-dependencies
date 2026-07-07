@@ -1,7 +1,7 @@
-wxwidgets: xlights_2026.11
+wxwidgets: xlights_2026.12
 
 ispc:
-Currently using v1.30.0
+Currently using v1.31.0
 
 ZSTD:
 Currently using  v1.5.7
@@ -24,6 +24,5 @@ Currently using 0.15.0
 ffmpeg:
 Currently using n6.1.5
 
-KLightMapper:
-Currently using v1.2.0
-Closed-source iOS light-mapping framework (camera-based pixel mapping).
+SPIRV-Cross/glslang
+Latest on main as of July 7, 2026

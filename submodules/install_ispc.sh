@@ -5,7 +5,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BASE_DEPS_DIR=$( dirname -- "${SCRIPT_DIR}" )
 
-ISPC_VERSION=v1.30.0
+ISPC_VERSION=v1.31.0
 wget https://github.com/ispc/ispc/releases/download/${ISPC_VERSION}/ispc-${ISPC_VERSION}-macOS.universal.tar.gz
 tar -xzf ispc-${ISPC_VERSION}-macOS.universal.tar.gz
 cp ispc-${ISPC_VERSION}-macOS.universal/bin/ispc ${BASE_DEPS_DIR}/bin
