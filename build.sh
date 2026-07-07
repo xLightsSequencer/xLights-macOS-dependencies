@@ -61,9 +61,6 @@ cd ..
 rm -rf output
 mkdir -p output
 
-# Stage the SPM xcframework zips (built by submodules/build_angle.sh) so the
-# release workflow uploads them as assets for the xLights-spm package.
-cp "${BASE_DEPS_DIR}/spm-artifacts/"*.xcframework.zip "${BASE_DEPS_DIR}/output/" 2>/dev/null || true
 
 cd ..
 

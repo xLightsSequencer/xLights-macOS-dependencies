@@ -28,13 +28,3 @@ jobs:
          allowUpdates: true
          artifacts: "output/*"
          token: ${{ secrets.GITHUB_TOKEN }}
-    # Publish the stable ANGLE Swift package to xLightsSequencer/xLights-spm:
-    # regenerate Package.swift from the just-attached release assets and tag a
-    # semver derived from this build's tag (xlights_2026.10 -> 2026.10.0).
-    # Requires repo/org secret SPM_REPO_TOKEN (Contents:write on xLights-spm);
-    # the script no-ops with a notice when it is absent.
-    - name: Publish Swift package (release)
-      if: startsWith(github.ref, 'refs/tags/')
-      env:
-        SPM_REPO_TOKEN: ${{ secrets.SPM_REPO_TOKEN }}
-      run: ./submodules/spm/publish.sh release
