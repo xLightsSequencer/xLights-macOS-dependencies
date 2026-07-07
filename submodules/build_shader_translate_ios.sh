@@ -9,8 +9,10 @@ set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BASE_DEPS_DIR=$( dirname -- "${SCRIPT_DIR}" )
 
-# Sources are cloned/updated by build_shader_translate.sh (run it first).
-[ -d glslang ] || { echo "run build_shader_translate.sh first (clones sources)"; exit 1; }
+# Self-contained: sources come from the submodules (or build_shader_translate.sh's
+# clones); glslang's External deps are re-fetched if a prior cleanup removed them.
+[ -f glslang/CMakeLists.txt ] || { echo "glslang sources missing (init submodules or run build_shader_translate.sh)"; exit 1; }
+[ -d glslang/External/spirv-tools ] || ( cd glslang && python3 update_glslang_sources.py )
 
 LIBS="libglslang.a libSPIRV.a libMachineIndependent.a libGenericCodeGen.a \
       libglslang-default-resource-limits.a libOSDependent.a \
@@ -50,3 +52,7 @@ build_variant() {  # $1=tag $2=sysroot("" for device) $3=libtree $4=dbgtree
 
 build_variant device ""               lib-ios     libdbg-ios
 build_variant sim    iphonesimulator  lib-ios-sim libdbg-ios-sim
+
+# Leave the checkouts pristine so the parent repo's git status stays clean.
+( cd glslang     && git clean -dffx -q )
+( cd SPIRV-Cross && git clean -dffx -q )

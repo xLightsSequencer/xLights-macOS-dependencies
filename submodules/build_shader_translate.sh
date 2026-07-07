@@ -13,9 +13,10 @@ BASE_DEPS_DIR=$( dirname -- "${SCRIPT_DIR}" )
 STAGE="${SCRIPT_DIR}/.shader_translate_stage"
 rm -rf "${STAGE}"; mkdir -p "${STAGE}"
 
-# glslang carries version-matched SPIRV-Tools + SPIRV-Headers via its updater.
-[ -d glslang ]     || git clone --depth 1 https://github.com/KhronosGroup/glslang.git
-[ -d SPIRV-Cross ] || git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Cross.git
+# glslang carries version-matched SPIRV-Tools + SPIRV-Headers via its updater
+# (fetched into glslang/External each run; cleaned up below).
+[ -f glslang/CMakeLists.txt ]     || git clone --depth 1 https://github.com/KhronosGroup/glslang.git
+[ -f SPIRV-Cross/CMakeLists.txt ] || git clone --depth 1 https://github.com/KhronosGroup/SPIRV-Cross.git
 ( cd glslang && python3 update_glslang_sources.py )
 
 COMMON=(
@@ -52,4 +53,9 @@ cp -R "${STAGE}/include/glslang"     "${BASE_DEPS_DIR}/include/"
 cp -R "${STAGE}/include/spirv-tools"  "${BASE_DEPS_DIR}/include/"
 cp -R "${STAGE}/include/spirv_cross"  "${BASE_DEPS_DIR}/include/"
 rm -rf "${STAGE}"
+
+# Leave the checkouts pristine so the parent repo's git status stays clean
+# (removes build dirs and glslang/External; both are re-created on next run).
+( cd glslang     && git clean -dffx -q )
+( cd SPIRV-Cross && git clean -dffx -q )
 echo "shader-translate deps installed."
