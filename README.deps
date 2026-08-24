@@ -1,3 +1,104 @@
+This repo builds the third-party dependency bundles for every xLights desktop
+platform from ONE set of submodule pins, so the platforms cannot drift:
+
+  macOS/iOS   ./build.sh          -> xLights-macOS-dependencies.tar.zst
+  Windows x64 ./build_windows.ps1 -> xLights-windows-dependencies-x64.zip
+
+Both are attached to the same GitHub release by .github/workflows/Release.yml.
+
+
+Windows notes
+=============
+
+Toolset
+  Visual Studio 2026 only - VS 2022 support was dropped, so there is no
+  cross-toolset ABI question to manage. env.ps1 asks vswhere for VS major >= 18
+  and fails with a clear message on anything older, rather than silently
+  building with VS 2022 and failing later. CI runs on the explicitly named
+  windows-2025-vs2026 image (not windows-latest, which migrates between OS
+  images on GitHub's schedule and would change the compiler behind a published
+  artifact). BUILD_INFO.json records the exact MSVC version that produced the
+  bundle. XL_VCVARS_VER can force a specific toolset when bisecting a compiler
+  problem.
+
+FFmpeg is downloaded, not built
+  Everything else is compiled from the submodule pin. FFmpeg on Windows comes
+  from BtbN/FFmpeg-Builds instead, because the value in FFmpeg is its
+  hardware-decode matrix (nvenc/nvdec, QSV, AMF, D3D11VA, Vulkan, OpenCL) plus
+  x264/x265, and maintaining that configure surface against MSYS2 is a large
+  permanent burden for no gain.
+
+  This is what xLights already does today: the avcodec.lib currently committed
+  in xLights lib/windows64 is a MinGW dlltool import archive pointing at
+  avcodec-60.dll, with libgcc_s_seh-1.dll / libstdc++-6.dll /
+  libwinpthread-1.dll alongside it in bin64. MSVC links these import libraries
+  (verified). So the change is like-for-like.
+
+  Because the pin is a filename rather than a submodule SHA, nothing
+  structurally forces it to match the macOS leg -- so FFMPEG_VERSION at the
+  repo root is the single pin and build_windows.ps1 FAILS if the ffmpeg
+  submodule (which the macOS leg compiles) is on a different tag.
+
+Windows build prerequisites
+  Visual Studio (2022 or newer) supplies cl, msbuild, cmake and ninja - env.ps1
+  imports the dev environment and finds them inside the VS install, so no
+  separate cmake/ninja install is needed. Additionally required:
+    * git
+    * a real Python 3, for glslang's update_glslang_sources.py. NOTE the
+      WindowsApps\python.exe "app execution alias" is NOT Python - it exits
+      9009 and points at the Store - so build_shader_translate.ps1 probes
+      candidates by running them rather than trusting Get-Command. GitHub
+      runners ship a real Python.
+
+New submodule: zlib
+  macOS and Linux take zlib from the system, so this repo never needed it.
+  Windows has no system zlib and two things require it - libxlsxwriter links
+  it, and xLights links z.lib - so zlib is now a submodule (pinned v1.3.1) and
+  is built by the Windows leg only.
+
+liquidfun needs working-tree patching
+  liquidfun is a dormant Box2D fork. Two things break under a current
+  toolchain, both patched in the working tree by build_liquidfun.ps1 and
+  reverted afterwards:
+    * it declares cmake_minimum_required(VERSION 2.8); CMake 4.3 (bundled with
+      VS 2026) REMOVED compatibility with < 3.5 and CMAKE_POLICY_VERSION_MINIMUM
+      no longer rescues it.
+    * it appends "/W4 /WX" to CMAKE_CXX_FLAGS *after* the command line, so
+      warnings-as-errors cannot be turned off with -D flags.
+  The macOS leg will hit the first of these once its cmake reaches 4.3; the
+  build_liquidfun.sh flags.make hack already works around the second.
+
+Known version skew to resolve
+  These are the reasons this repo exists; each needs a decision, not a silent
+  workaround:
+
+    ffmpeg  RESOLVED - both legs are on n8.1 (submodule + FFMPEG_VERSION),
+            and build_windows.ps1 fails the build if they ever diverge.
+            Linux still uses distro FFmpeg (Ubuntu 24.04 = 6.1, newer =
+            7.x/8.x) and cannot be pinned, so xLights supports the 6.x/7.x/8.x
+            range; src-core/media/FFmpegCompat.h declares that floor and
+            #errors on FFmpeg 5.x or older.
+    lua     macOS builds 5.4.8; xLights Windows links lua5.3.5-static.lib;
+            Linux uses distro liblua5.3-dev. The Windows bundle emits lua.lib,
+            so xLights' #pragma comment(lib, "lua5.3.5-static.lib") must be
+            updated -- and the 5.3 -> 5.4 API change checked.
+    wx      macOS pins xlights_2026.13; xLights win_CI.yml builds wxWidgets
+            from HEAD. The bundle removes that by shipping the pinned build.
+
+  postproc: xLights links postproc.lib, but BtbN's gpl-shared build does not
+  ship libpostproc. Either the pragma is vestigial and should be dropped, or a
+  build that includes it is needed.
+
+  curl: xLights links "libcurl.dll.a" - a MinGW import library - and carries
+  libgcc_s_seh-1.dll / libstdc++-6.dll / libwinpthread-1.dll in bin64 to
+  satisfy it. The bundle's MSVC build produces libcurl.lib + libcurl.dll and
+  needs none of those three, so switching means updating that pragma and
+  deleting three DLLs.
+
+
+Submodule versions
+==================
+
 wxwidgets: xlights_2026.12
 
 ispc:

@@ -10,3 +10,12 @@ bin
 output
 spm-artifacts
 submodules/*.log
+
+# --- Windows leg (build_windows.ps1) ---
+BUILD_INFO.json
+# Anchored: an unanchored "wxWidgets" would also match submodules/wxWidgets.
+/wxWidgets/
+# Per-library out-of-tree build dirs, created inside each submodule.
+build-win-*/
+/submodules/ffmpeg-win/
+/submodules/*_win.log

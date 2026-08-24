@@ -31,3 +31,6 @@
 [submodule "submodules/SPIRV-Cross"]
 	path = submodules/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross.git
+[submodule "submodules/zlib"]
+	path = submodules/zlib
+	url = https://github.com/madler/zlib
