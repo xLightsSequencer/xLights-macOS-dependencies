@@ -27,7 +27,6 @@ make -j ${NUMCPUS} ; make
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavutil.a ./libavutil/libavutil.a ./x86_64/libavutil.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavfilter.a ./libavfilter/libavfilter.a ./x86_64/libavfilter.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavcodec.a ./libavcodec/libavcodec.a ./x86_64/libavcodec.a
-lipo -create -output ${BASE_DEPS_DIR}/lib/libpostproc.a ./libpostproc/libpostproc.a ./x86_64/libpostproc.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavformat.a ./libavformat/libavformat.a ./x86_64/libavformat.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavdevice.a ./libavdevice/libavdevice.a ./x86_64/libavdevice.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libswresample.a ./libswresample/libswresample.a ./x86_64/libswresample.a
