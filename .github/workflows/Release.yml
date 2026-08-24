@@ -1,30 +1,96 @@
-name: macOS Release
+name: Release
+
+# Builds the xLights dependency bundles for every desktop platform and attaches
+# them to ONE release, so a tag ships a matched set:
+#
+#   macOS/iOS : xLights-macOS-dependencies.tar.zst
+#   Windows   : xLights-windows-dependencies-x64.zip
+#
+# Both legs build from the SAME submodule pins, which is the point of keeping
+# them in one repo - Mac and Windows cannot drift to different library versions
+# the way they did when Windows carried hand-updated binaries in xLights itself.
 
 on:
   push:
     tags:
     - '*'
   workflow_dispatch:
+
+# Unlike CI, releases are never cancelled mid-flight: publish only runs after
+# every platform succeeds, so a half-cancelled run could leave a release with
+# one platform's asset attached and not the other's.
+concurrency:
+  group: xlights-dependencies-release
+  cancel-in-progress: false
+
 jobs:
   build:
-
-    runs-on: macOS-26
+    name: Build (${{ matrix.target }})
+    # fail-fast: false so one platform's failure still lets the other finish and
+    # every failure shows up in a single run.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos
+            runner: macOS-26
+          - target: windows
+            runner: windows-2025-vs2026
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
-          submodules: 'false'
+        submodules: 'false'      # build.sh / build_windows.ps1 init what they need
+
+    # ---------- macOS / iOS ----------
     - uses: maxim-lobanov/setup-xcode@v1
+      if: matrix.target == 'macos'
       with:
         xcode-version: '26.4.1'
-    - name: Install dependencies
+    - name: Install macOS build tools
+      if: matrix.target == 'macos'
       run: |
         brew update
         brew install automake libtool cmake nasm
-    - name: Build
+    - name: Build (macOS)
+      if: matrix.target == 'macos'
       run: ./build.sh
+
+    # ---------- Windows ----------
+    # windows-2025-vs2026 is named explicitly rather than windows-latest:
+    # xLights is Visual Studio 2026 only (VS 2022 was dropped), and -latest
+    # migrates between OS images on GitHub's schedule, which would silently
+    # change the compiler that produces a published artifact. env.ps1 refuses
+    # anything older than VS 2026, and BUILD_INFO.json records the exact MSVC
+    # version the bundle was built with.
+    - name: Build (Windows)
+      if: matrix.target == 'windows'
+      shell: pwsh
+      run: ./build_windows.ps1
+
+    - name: Upload bundle
+      uses: actions/upload-artifact@v4
+      with:
+        name: deps-${{ matrix.target }}
+        path: output/*
+        retention-days: 1     # same-run intermediate; the release is the product
+
+  publish:
+    name: Publish release
+    needs: build                     # every platform must succeed - a tag ships all or none
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        path: output
+        merge-multiple: true
     - uses: ncipollo/release-action@v1
       with:
-         allowUpdates: true
-         artifacts: "output/*"
-         token: ${{ secrets.GITHUB_TOKEN }}
+        allowUpdates: true
+        artifacts: "output/*"
+        token: ${{ secrets.GITHUB_TOKEN }}

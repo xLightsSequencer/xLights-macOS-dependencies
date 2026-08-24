@@ -1,4 +1,11 @@
-name: macOS CI
+name: CI
+
+# Validates BOTH dependency legs on every push/PR, so a break in either one
+# surfaces here rather than at tag time in Release.yml. Nothing is published;
+# the Windows leg skips packaging since the zip is only needed for a release.
+#
+# Release.yml is the same build with packaging + publishing bolted on. Keep the
+# two in step: a change to how a platform builds belongs in both.
 
 on:
   push:
@@ -6,23 +13,70 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+
+# A second push supersedes the first; these builds are long and nobody needs the
+# older result. Release runs are NOT cancelled (see Release.yml) - a half-done
+# release is worse than a slow one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-
-    runs-on: macOS-26
-    permissions:
-      contents: write          # GITHUB_TOKEN needs this to manage the `latest` release
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false      # one platform failing must not hide the other's result
+      matrix:
+        include:
+          - target: macos
+            runner: macOS-26
+          - target: windows
+            runner: windows-2025-vs2026
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180    # wxWidgets alone is a long pole on a cold cache
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
-          submodules: 'false'
+        submodules: 'false'      # build.sh / build_windows.ps1 init what they need
+
+    # ---------- macOS / iOS ----------
     - uses: maxim-lobanov/setup-xcode@v1
+      if: matrix.target == 'macos'
       with:
         xcode-version: '26.4.1'
-    - name: Install dependencies
+    - name: Install macOS build tools
+      if: matrix.target == 'macos'
       run: |
         brew update
         brew install automake libtool cmake nasm
-    - name: Build
+    - name: Build (macOS)
+      if: matrix.target == 'macos'
       run: ./build.sh
+
+    # ---------- Windows ----------
+    # Cache the wxWidgets build, keyed on the exact submodule commit. wx is by
+    # far the longest part of the Windows leg, and build_wxwidgets.ps1
+    # short-circuits msbuild entirely when a complete build is already present -
+    # which is what makes caching the .lib tree worthwhile. Without that
+    # short-circuit msbuild would recompile every object regardless.
+    - name: Resolve wxWidgets submodule commit
+      if: matrix.target == 'windows'
+      id: wx
+      shell: bash
+      run: echo "sha=$(git ls-tree HEAD submodules/wxWidgets | awk '{print $3}')" >> "$GITHUB_OUTPUT"
+
+    - name: Cache wxWidgets build
+      if: matrix.target == 'windows'
+      uses: actions/cache@v4
+      with:
+        path: submodules/wxWidgets/lib/vc_x64_lib
+        key: wx-vs2026-x64-${{ steps.wx.outputs.sha }}
+
+    # No -Zip: CI only needs to prove every library builds. Packaging a ~400 MB
+    # bundle on every push wastes runner time and disk for an artifact that is
+    # thrown away.
+    - name: Build (Windows)
+      if: matrix.target == 'windows'
+      shell: pwsh
+      run: ./build_windows.ps1 -SkipPackage
