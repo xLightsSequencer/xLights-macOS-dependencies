@@ -26,20 +26,23 @@ $ErrorActionPreference = 'Stop'
 # Order matters only in that wxWidgets is by far the longest pole; run it first
 # so a failure in it surfaces early rather than after everything else.
 $Libraries = @(
-    @{ Name = 'wxwidgets';        Script = 'build_wxwidgets.ps1' }
-    @{ Name = 'zstd';             Script = 'build_zstd.ps1' }
+    @{ Name = 'wxwidgets';        Script = 'build_wxwidgets.ps1';        Submodule = 'submodules/wxWidgets' }
+    @{ Name = 'zstd';             Script = 'build_zstd.ps1';             Submodule = 'submodules/zstd' }
     # zlib has no macOS counterpart (system-provided there) but must precede
     # libxlswriter, which links against it.
-    @{ Name = 'zlib';             Script = 'build_zlib.ps1' }
-    @{ Name = 'liquidfun';        Script = 'build_liquidfun.ps1' }
-    @{ Name = 'sdl';              Script = 'build_sdl.ps1' }
-    @{ Name = 'lua';              Script = 'build_lua.ps1' }
-    @{ Name = 'libxlswriter';     Script = 'build_libxlswriter.ps1' }
-    @{ Name = 'hidapi';           Script = 'build_hidapi.ps1' }
-    @{ Name = 'curl';             Script = 'build_curl.ps1' }
-    @{ Name = 'ffmpeg';           Script = 'build_ffmpeg.ps1' }
-    @{ Name = 'shader_translate'; Script = 'build_shader_translate.ps1' }
+    @{ Name = 'zlib';             Script = 'build_zlib.ps1';             Submodule = 'submodules/zlib' }
+    @{ Name = 'liquidfun';        Script = 'build_liquidfun.ps1';        Submodule = 'submodules/liquidfun' }
+    @{ Name = 'sdl';              Script = 'build_sdl.ps1';              Submodule = 'submodules/SDL' }
+    @{ Name = 'lua';              Script = 'build_lua.ps1';              Submodule = 'submodules/lua' }
+    @{ Name = 'libxlswriter';     Script = 'build_libxlswriter.ps1';     Submodule = 'submodules/libxlswriter' }
+    @{ Name = 'hidapi';           Script = 'build_hidapi.ps1';           Submodule = 'submodules/hidapi' }
+    @{ Name = 'curl';             Script = 'build_curl.ps1';             Submodule = 'submodules/curl' }
+    # FFmpeg is downloaded, not built - but the submodule is still needed so the
+    # version-sync gate below can compare against the tag the macOS leg builds.
+    @{ Name = 'ffmpeg';           Script = 'build_ffmpeg.ps1';           Submodule = @() }
+    @{ Name = 'shader_translate'; Script = 'build_shader_translate.ps1'; Submodule = 'submodules/glslang', 'submodules/SPIRV-Cross' }
 )
+
 
 # --- version-sync gate ------------------------------------------------------
 # The whole point of building Windows from this repo is that Mac and Windows
@@ -51,29 +54,72 @@ function Test-FFmpegSync {
     $versionFile = Join-Path $PSScriptRoot 'FFMPEG_VERSION'
     if (-not (Test-Path $versionFile)) { throw "FFMPEG_VERSION missing" }
     $pinned = (Get-Content $versionFile -Raw).Trim()
+    if (-not $pinned) { throw "FFMPEG_VERSION is empty" }
 
-    $sub = Join-Path $PSScriptRoot 'submodules\ffmpeg'
-    if (-not (Test-Path (Join-Path $sub '.git'))) {
-        Write-Host "    ffmpeg submodule not checked out; skipping sync check" -ForegroundColor DarkGray
-        return
-    }
-    Push-Location $sub
-    try { $actual = (& git describe --tags --always 2>$null) } finally { Pop-Location }
+    Push-Location $PSScriptRoot
+    try {
+        # The authoritative pin is the commit this superproject records for the
+        # submodule - read straight out of the tree, so the submodule does not
+        # need to be checked out at all.
+        $entry = & git ls-tree HEAD submodules/ffmpeg
+        if (-not $entry) { throw "submodules/ffmpeg is not a tracked submodule" }
+        $recorded = ($entry -split '\s+')[2]
 
-    # The macOS leg compiles the submodule; Windows downloads $pinned. If they
-    # name different releases the bundles are NOT version-synced.
-    if ($actual -and -not $actual.StartsWith($pinned)) {
-        throw ("FFmpeg version skew: FFMPEG_VERSION says '$pinned' but the " +
-               "submodule is at '$actual'. Move the submodule to $pinned (the " +
-               "macOS leg builds it) or update FFMPEG_VERSION. See README.deps.")
-    }
-    Write-Host "    ffmpeg pin OK: $pinned" -ForegroundColor DarkGray
+        # Resolve what FFMPEG_VERSION names upstream. Deliberately NOT
+        # `git describe` in the submodule: the checkout is --depth 1 with no
+        # tags, so describe returns a bare SHA and the comparison would either
+        # fail spuriously or, worse, be silently skipped.
+        $url = & git config -f .gitmodules --get submodule.submodules/ffmpeg.url
+        if (-not $url) { throw "no URL for submodules/ffmpeg in .gitmodules" }
+
+        # Annotated tags need the peeled ref (^{}) to reach the commit;
+        # lightweight tags only have the plain ref. Try peeled, then plain.
+        $expected = $null
+        foreach ($ref in @("refs/tags/$pinned^{}", "refs/tags/$pinned")) {
+            $line = & git ls-remote $url $ref 2>$null | Select-Object -First 1
+            if ($line) { $expected = ($line -split '\s+')[0]; break }
+        }
+        if (-not $expected) {
+            throw "FFmpeg tag '$pinned' not found at $url (is FFMPEG_VERSION a real release tag?)"
+        }
+
+        if ($recorded -ne $expected) {
+            throw ("FFmpeg version skew: FFMPEG_VERSION says '$pinned' (commit " +
+                   "$($expected.Substring(0,10))) but submodules/ffmpeg is pinned to " +
+                   "$($recorded.Substring(0,10)). The macOS leg builds the submodule and " +
+                   "Windows downloads $pinned, so they must name the same release. " +
+                   "See README.deps.")
+        }
+        Write-Host "    ffmpeg pin OK: $pinned ($($recorded.Substring(0,10)))" -ForegroundColor DarkGray
+    } finally { Pop-Location }
 }
 
-Write-Host "==> Checking cross-platform version pins" -ForegroundColor Cyan
-Test-FFmpegSync
+# --- submodule checkout -----------------------------------------------------
+# build.sh does `git submodule update --init` for everything; doing the same
+# here would clone FFmpeg's full history for a leg that only downloads FFmpeg.
+# Instead init exactly what the selected libraries need. submodules/ffmpeg is
+# NOT among them: nothing builds it here, and the version-sync gate reads the
+# recorded commit out of the superproject tree rather than the checkout.
+#
+# --depth 1 keeps the checkout cheap; the pinned commits are all release tags,
+# which the server can serve directly.
+function Initialize-Submodules {
+    param([Parameter(Mandatory)][string[]]$Paths)
+    $needed = @($Paths | Where-Object {
+        -not (Test-Path (Join-Path $PSScriptRoot ((Join-Path $_ '.git') -replace '/', '\')))
+    })
+    if ($needed.Count -eq 0) {
+        Write-Host "    all required submodules already checked out" -ForegroundColor DarkGray
+        return
+    }
+    Write-Host ("    initialising: {0}" -f ($needed -join ', ')) -ForegroundColor DarkGray
+    Push-Location $PSScriptRoot
+    try {
+        $gitArgs = @('submodule', 'update', '--init', '--depth', '1') + $needed
+        Invoke-Checked git @gitArgs
+    } finally { Pop-Location }
+}
 
-# --- build ------------------------------------------------------------------
 # `powershell -File script.ps1 -Only a,b,c` hands the whole list over as ONE
 # string (unlike -Command), so split on commas before matching or every
 # multi-library invocation looks like an unknown name.
@@ -88,6 +134,13 @@ if ($onlyNames) {
         throw "build_windows: unknown -Only value(s): $($unknown -join ', '). Known: $known"
     }
 }
+
+Write-Host "==> Checking out submodules" -ForegroundColor Cyan
+$subPaths = @($selected | ForEach-Object { $_.Submodule })
+Initialize-Submodules -Paths ($subPaths | Select-Object -Unique)
+
+Write-Host "==> Checking cross-platform version pins" -ForegroundColor Cyan
+Test-FFmpegSync
 
 $logDir = Join-Path $PSScriptRoot 'submodules'
 foreach ($lib in $selected) {
