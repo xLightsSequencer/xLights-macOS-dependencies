@@ -15,5 +15,7 @@ if (-not $dll) { throw "build_hidapi: hidapi.dll not produced" }
 Install-Artifact -Path $lib.FullName -Destination $XL_LIB_DIR
 Install-Artifact -Path $lib.FullName -Destination $XL_DBG_DIR
 Install-Artifact -Path $dll.FullName -Destination $XL_BIN_DIR
-Install-Artifact -Path (Join-Path $src 'hidapi\hidapi.h') -Destination $XL_INC_DIR
+# Consumers include "hidapi/hidapi.h", so preserve the directory rather than
+# flattening the header into include/.
+Install-Artifact -Path (Join-Path $src 'hidapi\hidapi.h') -Destination (Join-Path $XL_INC_DIR 'hidapi')
 Write-Host "==> hidapi done" -ForegroundColor Green

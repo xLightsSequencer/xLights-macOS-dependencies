@@ -21,6 +21,9 @@ export LDFLAGS="-g ${XL_TARGETS} ${OSX_VERSION_MIN} "
 make clean
 make -j ${NUMCPUS}
 cp ./build/.libs/libSDL2.a ${BASE_DEPS_DIR}/libdbg
+mkdir -p ${BASE_DEPS_DIR}/include/SDL2
+cp -f include/*.h ${BASE_DEPS_DIR}/include/SDL2/
+
 make clean
 git checkout -- include/SDL_config.h
 git checkout -- include/SDL_revision.h

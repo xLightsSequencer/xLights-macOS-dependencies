@@ -26,6 +26,11 @@ make clean
 unset CXXFLAGS
 unset CXX
 
+# Consumers include <Box2D/Box2D.h>, so preserve the Box2D/ directory. Only
+# headers - the sources stay in the submodule.
+mkdir -p ${BASE_DEPS_DIR}/include/Box2D
+( cd Box2D && find . -name '*.h' -exec ditto {} ${BASE_DEPS_DIR}/include/Box2D/{} \; )
+
 cd ../..
 git reset --hard
 git status --ignored --short . | colrm 1 2 | xargs rm -rf

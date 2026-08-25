@@ -18,6 +18,11 @@ make -j ${NUMCPUS} HAVE_LZMA=0 HAVE_LZ4=0 lib-mt
 cp lib/libzstd.a ${BASE_DEPS_DIR}/libdbg
 unset CFLAGS
 unset LDFLAGS
+# Ship the headers next to the library. Without them consumers compile against
+# some other copy of zstd, and header/library skew across versions is exactly
+# what this repo exists to prevent.
+cp -f lib/zstd.h lib/zdict.h lib/zstd_errors.h ${BASE_DEPS_DIR}/include/
+
 make clean
 
 cd ..

@@ -65,4 +65,20 @@ foreach ($cfg in @('Release', 'Debug')) {
     Push-Location $src
     try { & git checkout -- . 2>&1 | Out-Null } finally { Pop-Location }
 }
+# Consumers include <Box2D/Box2D.h>, so preserve the Box2D/ directory. Headers
+# only - the sources stay in the submodule. Without this the bundle ships the
+# library but no headers, and consumers compile against some other copy.
+$b2Src = Join-Path $src 'Box2D'
+$b2Dst = Join-Path $XL_INC_DIR 'Box2D'
+Remove-Item -Recurse -Force $b2Dst -ErrorAction SilentlyContinue
+$headers = @(Get-ChildItem $b2Src -Recurse -Filter '*.h' -File)
+if ($headers.Count -eq 0) { throw "build_liquidfun: no Box2D headers found under $b2Src" }
+foreach ($h in $headers) {
+    $rel = $h.FullName.Substring($b2Src.Length).TrimStart('\')
+    $dst = Join-Path $b2Dst $rel
+    New-Item -ItemType Directory -Force -Path (Split-Path $dst -Parent) | Out-Null
+    Copy-Item $h.FullName $dst -Force
+}
+Write-Host ("    installed {0} Box2D headers" -f $headers.Count) -ForegroundColor DarkGray
+
 Write-Host "==> liquidfun done" -ForegroundColor Green

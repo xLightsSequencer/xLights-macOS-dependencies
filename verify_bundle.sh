@@ -83,7 +83,7 @@ done <<< "$(find "${RELOC}" \( -name '*.pc' -o -name '*.cmake' -o -name '*.la' -
 #    miss an architecture mismatch; running proves the slice is usable.
 # ---------------------------------------------------------------------------
 echo "==> Linking and running a smoke test against the relocated bundle"
-REQUIRED_LIBS=(libavcodec.a libavformat.a libavutil.a libswresample.a liblua.a)
+REQUIRED_LIBS=(libavcodec.a libavformat.a libavutil.a libswresample.a liblua.a libzstd.a)
 MISSING_LIBS=()
 for l in "${REQUIRED_LIBS[@]}"; do
     [ -f "${RELOC}/lib/${l}" ] || MISSING_LIBS+=("${l}")
@@ -105,17 +105,14 @@ extern "C" {
 #include <lua.h>
 #include <lauxlib.h>
 }
+#include <zstd.h>
 int main() {
-    // Deliberately limited to what the macOS bundle actually ships headers
-    // for. zstd, for instance, installs its library but not its headers here
-    // (the Windows bundle does ship them) - testing it would fail on a gap in
-    // the test, not in the artifact.
     unsigned c = avcodec_version(), f = avformat_version();
     lua_State* L = luaL_newstate();
     if (!L) { printf("lua init failed\n"); return 1; }
     lua_close(L);
-    printf("avcodec=%u.%u avformat=%u.%u lua=ok\n",
-           c >> 16, (c >> 8) & 0xff, f >> 16, (f >> 8) & 0xff);
+    printf("avcodec=%u.%u avformat=%u.%u zstd=%s lua=ok\n",
+           c >> 16, (c >> 8) & 0xff, f >> 16, (f >> 8) & 0xff, ZSTD_versionString());
     return 0;
 }
 CPP
@@ -124,7 +121,7 @@ if clang++ -std=c++17 -o "${RELOC}/smoke" "${SMOKE}" \
      -I"${RELOC}/include" \
      "${RELOC}/lib/libavcodec.a" "${RELOC}/lib/libavformat.a" \
      "${RELOC}/lib/libavutil.a" "${RELOC}/lib/libswresample.a" \
-     "${RELOC}/lib/liblua.a" \
+     "${RELOC}/lib/liblua.a" "${RELOC}/lib/libzstd.a" \
      -framework CoreFoundation -framework CoreMedia -framework CoreVideo \
      -framework VideoToolbox -framework AudioToolbox -framework Security \
      -framework CoreServices -framework CoreGraphics -framework OpenGL \

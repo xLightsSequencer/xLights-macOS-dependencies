@@ -19,6 +19,9 @@ export CFLAGS="-g -Wall -fno-stack-protector -fno-common ${XL_TARGETS} ${OSX_VER
 make -j ${NUMCPUS}
 rm -f /opt/local/libdbg/libhidapi*
 cp ./mac/.libs/libhidapi.a ${BASE_DEPS_DIR}/libdbg
+mkdir -p ${BASE_DEPS_DIR}/include/hidapi
+cp -f hidapi/hidapi.h ${BASE_DEPS_DIR}/include/hidapi/
+
 make clean
 unset CFLAGS
 
