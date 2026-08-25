@@ -67,18 +67,30 @@ function Get-MissingWxLibs {
     return ,$missing
 }
 
-# Skip the (very long) msbuild when a complete build is already present. This is
-# what makes an actions/cache of lib/vc_x64_lib worth having: caching the .lib
-# files alone would not help, because msbuild would rebuild every object anyway
-# without this short-circuit. Set XL_FORCE_REBUILD=1 to build regardless.
+# Skip the (very long) msbuild when a complete build for THIS EXACT wx commit is
+# already present. CI always starts from a clean runner, so this only ever
+# helps a developer rebuilding locally.
+#
+# The commit check is the load-bearing part. Testing only for the presence of
+# the libraries would silently reuse a stale build after the wx submodule pin
+# moves - linking libraries from the previous wx against the current headers.
+# Set XL_FORCE_REBUILD=1 to rebuild regardless.
+$stampFile = Join-Path $libSrc '.xl-built-from'
+$wxCommit = (& git -C $wx rev-parse HEAD 2>$null)
+$stamped = if (Test-Path $stampFile) { (Get-Content $stampFile -Raw).Trim() } else { '' }
+
 [object[]]$missing = Get-MissingWxLibs
-if ($missing.Count -eq 0 -and -not $env:XL_FORCE_REBUILD) {
+if ($missing.Count -eq 0 -and $wxCommit -and $stamped -eq $wxCommit -and -not $env:XL_FORCE_REBUILD) {
     Write-Host "==> wxWidgets: complete build already present, skipping msbuild" -ForegroundColor Green
 } else {
     if ($missing -contains '<no-build>') {
         Write-Host "    no existing wx build found" -ForegroundColor DarkGray
     } elseif ($missing.Count -gt 0) {
         Write-Host ("    incomplete wx build ({0} missing, e.g. {1})" -f $missing.Count, $missing[0]) -ForegroundColor DarkGray
+    } elseif ($stamped -ne $wxCommit) {
+        Write-Host ("    existing wx build is from a different commit ({0} != {1}); rebuilding" -f
+                    $(if ($stamped) { $stamped.Substring(0, [Math]::Min(10, $stamped.Length)) } else { 'unstamped' }),
+                    $wxCommit.Substring(0, 10)) -ForegroundColor DarkGray
     }
 
     # Both configurations write into lib\vc_x64_lib - Release as wx*.lib with
@@ -101,6 +113,10 @@ if ($missing.Count -gt 0) {
            ($missing -join ', '))
 }
 Write-Host ("    all {0} xLights-required libraries present (release + debug)" -f ($requiredTemplates.Count * 2)) -ForegroundColor DarkGray
+
+# Record which wx commit produced this build so a later run can tell whether it
+# is still current rather than assuming presence means correctness.
+if ($wxCommit) { Set-Content -Path $stampFile -Value $wxCommit -NoNewline }
 
 Write-Host "==> wxWidgets: installing into bundle" -ForegroundColor Cyan
 Remove-Item -Recurse -Force $XL_WX_DIR -ErrorAction SilentlyContinue
