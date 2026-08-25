@@ -78,6 +78,13 @@ run_step shader_translate_ios ./build_shader_translate_ios.sh
 
 cd ..
 
+# --- make relocatable -------------------------------------------------------
+# wx debug dylibs are installed with an absolute install name taken from
+# configure's --prefix, i.e. this machine's path. Rewrite them to @rpath here so
+# the published bundle works wherever it is unpacked, instead of every consumer
+# patching it with install_name_tool at its own build time.
+run_step relocatable "${BASE_DEPS_DIR}/make_relocatable.sh" "${BASE_DEPS_DIR}"
+
 # --- verify -----------------------------------------------------------------
 # Exit codes alone are not enough: a build script can return 0 having produced
 # nothing. Check the expected libraries are actually present before packaging,
@@ -106,12 +113,16 @@ if [ ${#XL_MISSING[@]} -gt 0 ]; then
     XL_FAILED+=("verify")
 fi
 
+# Existence is still not usability: check the bundle survives being moved and
+# can actually be linked and run against.
+run_step usable "${BASE_DEPS_DIR}/verify_bundle.sh" "${BASE_DEPS_DIR}"
+
 if [ ${#XL_FAILED[@]} -gt 0 ]; then
     echo ""
     echo "build.sh: FAILED steps: ${XL_FAILED[*]}"
     exit 1
 fi
-echo "build.sh: all steps succeeded and all expected libraries are present."
+echo "build.sh: all steps succeeded, all expected libraries are present, and the bundle is relocatable."
 
 rm -rf output
 mkdir -p output
