@@ -6,13 +6,19 @@
 $src = Join-Path $PSScriptRoot 'libxlswriter'
 foreach ($cfg in @('Release', 'Debug')) {
     $build = Join-Path $PSScriptRoot "libxlswriter\build-win-$cfg"
-    $zlibBuild = Join-Path $PSScriptRoot "zlib\build-win-$cfg"
-    $zlibLib = Get-ChildItem $zlibBuild -Filter 'zlibstatic*.lib' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $zlibLib) { throw "build_libxlswriter: zlib ($cfg) not built yet - run build_zlib.ps1 first" }
+    # Point at the zlib copy this bundle already installed rather than reaching
+    # into zlib's build tree. The installed name is one we control and keep
+    # stable; upstream's is not - 1.3.1 emitted zlibstatic.lib and 1.3.2 emits
+    # zs.lib, which silently broke this lookup.
+    $zlibDir = if ($cfg -eq 'Release') { $XL_LIB_DIR } else { $XL_DBG_DIR }
+    $zlibLib = Join-Path $zlibDir 'zlib.lib'
+    if (-not (Test-Path $zlibLib)) {
+        throw "build_libxlswriter: zlib ($cfg) has not been installed into the bundle yet - build_zlib must run first"
+    }
 
     Build-CMakeProject -Source $src -BuildDir $build -Config $cfg -Options @(
         '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_TESTS=OFF', '-DBUILD_EXAMPLES=OFF',
-        "-DZLIB_LIBRARY=$($zlibLib.FullName)",
+        "-DZLIB_LIBRARY=$zlibLib",
         "-DZLIB_INCLUDE_DIR=$XL_INC_DIR")
 
     $built = Get-ChildItem $build -Recurse -Filter 'xlsxwriter*.lib' | Select-Object -First 1
