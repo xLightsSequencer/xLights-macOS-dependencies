@@ -12,10 +12,22 @@
 
 $src   = Join-Path $PSScriptRoot 'curl'
 $build = Join-Path $PSScriptRoot 'curl\build-win-Release'
-Build-CMakeProject -Source $src -BuildDir $build -Config Release -Options @(
+# Protocols: mirror exactly what the macOS/iOS builds disable. Consumers use
+# curl for HTTP(S) only, and leaving the rest enabled is pure attack surface -
+# it also made the DLL import WLDAP32 for an LDAP client nothing asks for.
+# Keeping the three platforms on the same protocol set is the point of building
+# them from one repo.
+$disabledProtocols = @(
+    'CURL_DISABLE_DICT', 'CURL_DISABLE_GOPHER', 'CURL_DISABLE_IMAP',
+    'CURL_DISABLE_LDAP', 'CURL_DISABLE_LDAPS', 'CURL_DISABLE_POP3',
+    'CURL_DISABLE_RTSP', 'CURL_DISABLE_SMB', 'CURL_DISABLE_SMTP',
+    'CURL_DISABLE_TELNET', 'CURL_DISABLE_TFTP'
+) | ForEach-Object { "-D$_=ON" }
+
+Build-CMakeProject -Source $src -BuildDir $build -Config Release -Options (@(
     '-DBUILD_SHARED_LIBS=ON', '-DBUILD_CURL_EXE=OFF', '-DBUILD_TESTING=OFF',
     '-DCURL_USE_SCHANNEL=ON', '-DCURL_USE_LIBPSL=OFF', '-DCURL_ZLIB=OFF',
-    '-DCURL_USE_LIBSSH2=OFF', '-DUSE_NGHTTP2=OFF')
+    '-DCURL_USE_LIBSSH2=OFF', '-DUSE_NGHTTP2=OFF') + $disabledProtocols)
 
 $imp = Get-ChildItem $build -Recurse -Filter 'libcurl*.lib' | Select-Object -First 1
 $dll = Get-ChildItem $build -Recurse -Filter 'libcurl*.dll' | Select-Object -First 1
