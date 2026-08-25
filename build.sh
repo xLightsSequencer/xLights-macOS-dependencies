@@ -140,6 +140,25 @@ rm -rf output
 mkdir -p output
 
 
+# The archive's top-level directory name and the published asset name are part
+# of the contract with consumers, NOT cosmetic. xLights' download_deps fetches
+# "xLights-macOS-dependencies.tar.zst" and then does
+#
+#     mv xLights-macOS-dependencies xLights-macOS-dependencies-${TAG}
+#
+# so renaming either would break every existing checkout. They therefore stay
+# fixed even though this repo is no longer named that - do not "tidy" them to
+# match the repository.
+#
+# What must NOT be hardcoded is the directory being archived: that is the
+# checkout name, which the repository rename changed. Derive it, and use tar's
+# -s substitution to present it under the name consumers expect.
+ARCHIVE_NAME="xLights-macOS-dependencies"
+CHECKOUT_NAME=$( basename "${BASE_DEPS_DIR}" )
+
 cd ..
 
-tar  --exclude-vcs --exclude submodules --exclude .github --exclude build.sh --exclude env.sh --exclude output -c xLights-macOS-dependencies | zstd -18 -T0 -f -o xLights-macOS-dependencies/output/xLights-macOS-dependencies.tar.zst
+tar  --exclude-vcs --exclude submodules --exclude .github --exclude build.sh --exclude env.sh --exclude output \
+     -s "|^${CHECKOUT_NAME}|${ARCHIVE_NAME}|" \
+     -c "${CHECKOUT_NAME}" \
+  | zstd -18 -T0 -f -o "${CHECKOUT_NAME}/output/${ARCHIVE_NAME}.tar.zst"
