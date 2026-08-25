@@ -34,3 +34,6 @@
 [submodule "submodules/zlib"]
 	path = submodules/zlib
 	url = https://github.com/madler/zlib
+[submodule "submodules/openssl"]
+	path = submodules/openssl
+	url = https://github.com/openssl/openssl

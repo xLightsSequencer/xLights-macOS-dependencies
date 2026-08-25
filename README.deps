@@ -68,28 +68,39 @@ liquidfun needs working-tree patching
   The macOS leg will hit the first of these once its cmake reaches 4.3; the
   build_liquidfun.sh flags.make hack already works around the second.
 
-curl is capped at 8.14.x - do not bump past it casually
-  curl 8.15.0 REMOVED the SecureTransport backend. Both build_curl.sh and
-  build_curl_ios.sh configure with --with-secure-transport --without-openssl,
-  so 8.15.0 and later leave the Apple builds with no TLS backend at all.
+TLS on Apple platforms: OpenSSL + Apple SecTrust
+  macOS and iOS previously used curl's SecureTransport backend, which caps the
+  connection at TLS 1.2. That is not a configuration choice - Apple never added
+  TLS 1.3 to SecureTransport, and curl's backend silently downgrades:
 
-    curl-8_14_0  secure-transport in configure.ac: 7 refs
-    curl-8_14_1  secure-transport in configure.ac: 7 refs   <- last one that works
-    curl-8_15_0  secure-transport in configure.ac: 0 refs   <- removed
+      case CURL_SSLVERSION_MAX_TLSv1_3:
+      case CURL_SSLVERSION_MAX_TLSv1_2:
+        ver_max = kTLSProtocol12;
 
-  There is no Apple-native TLS backend to switch to. The backends offered at
-  8.21.0 are openssl, gnutls, mbedtls, wolfssl, rustls and schannel;
-  lib/vtls/apple.c is NOT a backend, it is SecTrust-based certificate
-  verification (--with-apple-sectrust) that sits on top of a real one.
+  curl then removed the backend outright in 8.15.0, which is what previously
+  capped the curl pin at 8.14.x.
 
-  So moving past 8.14.x means building a TLS library for macOS universal, iOS
-  device and iOS simulator - four static builds in the iOS script alone - and
-  then optionally adding --with-apple-sectrust so trust still comes from the OS
-  store rather than a bundled CA bundle. mbedTLS is the lightest option for
-  static Apple builds; OpenSSL the most broadly compatible. Treat it as its own
-  piece of work, not a version bump.
+  Both are now solved the same way: OpenSSL supplies TLS, and
+  --with-apple-sectrust delegates certificate verification to the OS keychain,
+  so nothing has to ship or refresh a CA bundle. OpenSSL specifically because
+  curl wires SecTrust into openssl.c and gtls.c ONLY - mbedTLS or wolfSSL would
+  have forced a bundled CA store, and GnuTLS is LGPL with heavier dependencies.
+  OpenSSL 3.x is Apache-2.0, which is clean for App Store distribution.
+  --with-apple-sectrust requires curl >= 8.18.
 
-  8.14.0 -> 8.14.1 is safe: same branch, backend intact.
+  Verified with live handshakes rather than by reading configure output:
+
+      libcurl/8.21.0 OpenSSL/3.6.4
+      default                 http=200  negotiated=TLSv1.3
+      min TLS1.3              http=200  negotiated=TLSv1.3
+      max TLS1.2 (control)    http=200  negotiated=TLSv1.2
+
+  The negotiated version comes from SSL_get_version() via CURLINFO_TLS_SSL_PTR,
+  so it reports what the connection actually used. Windows is unaffected - it
+  uses Schannel, which does TLS 1.3 natively and takes trust from the OS store.
+
+  OpenSSL costs roughly 20 MB of static libraries per platform tree, which
+  reaches the iPad app as well.
 
 Known version skew to resolve
   These are the reasons this repo exists; each needs a decision, not a silent
@@ -128,7 +139,8 @@ drift. Regenerate it when bumping pins.
   wxWidgets     xlights_2026.13               xLights fork; carries patches - upgrade deliberately
   ffmpeg        n8.1                          macOS builds this; Windows downloads the same tag (FFMPEG_VERSION)
   SDL           release-2.32.10               SDL2 line. SDL3 is an API migration, not a bump
-  curl          curl-8_14_1                   CAPPED at 8.14.x - 8.15.0 removed SecureTransport (see above)
+  curl          curl-8_21_0                   TLS via OpenSSL + Apple SecTrust (see above)
+  openssl       openssl-3.6.4                 Apple platforms only; Windows uses Schannel
   zstd          v1.5.7                        current
   zlib          v1.3.2                        Windows only; macOS and Linux use the system zlib
   lua           v5.4.8                        5.5 is available but is an API break; consumers are still inconsistent

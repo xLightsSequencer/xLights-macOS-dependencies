@@ -20,3 +20,12 @@ build-win-*/
 /submodules/ffmpeg-win/
 /submodules/*_win.log
 /.verify-reloc-*/
+
+# Per-library staging directories. The build scripts remove these on success,
+# so they only survive a failed build - which is exactly when you do not want
+# them turning up as untracked noise.
+/submodules/.openssl_stage/
+/submodules/.openssl_ios_stage/
+/submodules/.curl_ssl_stage/
+/submodules/.shader_translate_stage/
+/submodules/.shader_translate_stage_win/

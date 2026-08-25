@@ -70,6 +70,8 @@ run_step hidapi ./build_hidapi.sh
 
 run_step ffmpeg ./build_ffmpeg.sh
 
+run_step openssl ./build_openssl.sh
+
 run_step curl ./build_curl.sh
 
 run_step ispc ./install_ispc.sh
@@ -81,6 +83,7 @@ run_step zstd_ios ./build_zstd_ios.sh
 run_step liquidfun_ios ./build_liquidfun_ios.sh
 run_step lua_ios ./build_lua_ios.sh
 run_step libxlswriter_ios ./build_libxlswriter_ios.sh
+run_step openssl_ios ./build_openssl_ios.sh
 run_step curl_ios ./build_curl_ios.sh
 run_step shader_translate_ios ./build_shader_translate_ios.sh
 
@@ -106,7 +109,8 @@ run_step relocatable "${BASE_DEPS_DIR}/make_relocatable.sh" "${BASE_DEPS_DIR}"
 # libpostproc is deliberately absent - it was removed from FFmpeg in 8.x.
 XL_EXPECTED_LIBS="libavcodec.a libavdevice.a libavfilter.a libavformat.a \
 libavutil.a libswresample.a libswscale.a libcurl.a libhidapi.a libliquidfun.a \
-liblua.a libSDL2.a libxlsxwriter.a libzstd.a libglslang.a libSPIRV.a \
+liblua.a libSDL2.a libxlsxwriter.a libzstd.a libssl.a libcrypto.a \
+libglslang.a libSPIRV.a \
 libSPIRV-Tools.a libSPIRV-Tools-opt.a libMachineIndependent.a \
 libGenericCodeGen.a libOSDependent.a libglslang-default-resource-limits.a \
 libspirv-cross-core.a libspirv-cross-glsl.a libspirv-cross-msl.a \
