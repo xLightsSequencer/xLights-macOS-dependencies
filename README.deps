@@ -68,6 +68,29 @@ liquidfun needs working-tree patching
   The macOS leg will hit the first of these once its cmake reaches 4.3; the
   build_liquidfun.sh flags.make hack already works around the second.
 
+curl is capped at 8.14.x - do not bump past it casually
+  curl 8.15.0 REMOVED the SecureTransport backend. Both build_curl.sh and
+  build_curl_ios.sh configure with --with-secure-transport --without-openssl,
+  so 8.15.0 and later leave the Apple builds with no TLS backend at all.
+
+    curl-8_14_0  secure-transport in configure.ac: 7 refs
+    curl-8_14_1  secure-transport in configure.ac: 7 refs   <- last one that works
+    curl-8_15_0  secure-transport in configure.ac: 0 refs   <- removed
+
+  There is no Apple-native TLS backend to switch to. The backends offered at
+  8.21.0 are openssl, gnutls, mbedtls, wolfssl, rustls and schannel;
+  lib/vtls/apple.c is NOT a backend, it is SecTrust-based certificate
+  verification (--with-apple-sectrust) that sits on top of a real one.
+
+  So moving past 8.14.x means building a TLS library for macOS universal, iOS
+  device and iOS simulator - four static builds in the iOS script alone - and
+  then optionally adding --with-apple-sectrust so trust still comes from the OS
+  store rather than a bundled CA bundle. mbedTLS is the lightest option for
+  static Apple builds; OpenSSL the most broadly compatible. Treat it as its own
+  piece of work, not a version bump.
+
+  8.14.0 -> 8.14.1 is safe: same branch, backend intact.
+
 Known version skew to resolve
   These are the reasons this repo exists; each needs a decision, not a silent
   workaround:
@@ -99,31 +122,20 @@ Known version skew to resolve
 Submodule versions
 ==================
 
-wxwidgets: xlights_2026.12
+`git submodule status` is the authority - this table is a convenience and can
+drift. Regenerate it when bumping pins.
 
-ispc:
-Currently using v1.31.0
+  wxWidgets     xlights_2026.13               xLights fork; carries patches - upgrade deliberately
+  ffmpeg        n8.1                          macOS builds this; Windows downloads the same tag (FFMPEG_VERSION)
+  SDL           release-2.32.10               SDL2 line. SDL3 is an API migration, not a bump
+  curl          curl-8_14_1                   CAPPED at 8.14.x - 8.15.0 removed SecureTransport (see above)
+  zstd          v1.5.7                        current
+  zlib          v1.3.2                        Windows only; macOS and Linux use the system zlib
+  lua           v5.4.8                        5.5 is available but is an API break; consumers are still inconsistent
+  libxlswriter  v1.2.4                        current
+  hidapi        hidapi-0.15.0                 current; used for 3D mouse support on macOS and Windows
+  glslang       16.4.0                        = vulkan-sdk-1.4.357.0, matched to SPIRV-Cross
+  SPIRV-Cross   vulkan-sdk-1.4.357.0          matched to glslang via the same Vulkan SDK release
+  liquidfun     v1.1.0-45-g7f204021           upstream dead since 2014; pin is past the last release
 
-ZSTD:
-Currently using  v1.5.7
-
-liquidfun:
-Currently using lastest master, but hasn't been updated in years
-
-SDL:
-Currently using release-2.32.10
-
-LUA:
-Currently using v5.4.8
-
-libxlswriter:
-Currently using v1.2.4
-
-libusb/libhidapi:
-Currently using 0.15.0
-
-ffmpeg:
-Currently using n6.1.5
-
-SPIRV-Cross/glslang
-Latest on main as of July 7, 2026
+  ispc          v1.31.0                       installed via script, not a submodule
