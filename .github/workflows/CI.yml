@@ -66,6 +66,15 @@ jobs:
       shell: bash
       run: echo "sha=$(git ls-tree HEAD submodules/wxWidgets | awk '{print $3}')" >> "$GITHUB_OUTPUT"
 
+    # ORDER MATTERS: the submodule must be cloned BEFORE the cache is restored.
+    # The cache path lives inside the submodule, so restoring first creates a
+    # non-empty submodules/wxWidgets/ and `git submodule update` then refuses to
+    # clone into it ("clone of ... failed"). Do not move this below the cache
+    # step. build_windows.ps1 initialises the rest; this call is idempotent.
+    - name: Check out wxWidgets submodule
+      if: matrix.target == 'windows'
+      run: git submodule update --init --depth 1 submodules/wxWidgets
+
     - name: Cache wxWidgets build
       if: matrix.target == 'windows'
       uses: actions/cache@v4
