@@ -135,6 +135,24 @@ if ($onlyNames) {
     }
 }
 
+# --- clean ------------------------------------------------------------------
+# The output tree is never pruned otherwise, so headers that move or get
+# renamed between versions linger and can shadow the current ones. That is the
+# exact header/library mismatch this bundle exists to prevent - a stale
+# FFmpeg 6 header sitting beside an 8.x library, for instance.
+#
+# Only on a full build: a -Only run is a developer iterating on one library and
+# must not wipe everything else.
+if (-not $onlyNames) {
+    Write-Host "==> Cleaning previous output tree" -ForegroundColor Cyan
+    foreach ($d in @($XL_LIB_DIR, $XL_DBG_DIR, $XL_INC_DIR, $XL_BIN_DIR, $XL_WX_DIR)) {
+        Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue
+    }
+    foreach ($d in @($XL_LIB_DIR, $XL_DBG_DIR, $XL_INC_DIR, $XL_BIN_DIR)) {
+        New-Item -ItemType Directory -Force -Path $d | Out-Null
+    }
+}
+
 Write-Host "==> Checking out submodules" -ForegroundColor Cyan
 $subPaths = @($selected | ForEach-Object { $_.Submodule })
 Initialize-Submodules -Paths ($subPaths | Select-Object -Unique)

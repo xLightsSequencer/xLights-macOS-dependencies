@@ -31,6 +31,14 @@ echo "Base Dir:  ${BASE_DEPS_DIR}"
 sysctl -a | grep hw.perflevel
 
 
+# Prune the output tree first. It is otherwise never cleaned, so headers that
+# move or get renamed between versions linger and can shadow the current ones -
+# a stale FFmpeg 6 header sitting beside an 8.x library, for instance, which is
+# the exact mismatch this bundle exists to prevent. build.sh always rebuilds
+# everything, so nothing is lost.
+rm -rf ${BASE_DEPS_DIR}/lib ${BASE_DEPS_DIR}/libdbg ${BASE_DEPS_DIR}/include \
+       ${BASE_DEPS_DIR}/bin ${BASE_DEPS_DIR}/share
+
 mkdir -p ${BASE_DEPS_DIR}/lib
 mkdir -p ${BASE_DEPS_DIR}/libdbg
 mkdir -p ${BASE_DEPS_DIR}/lib-ios
