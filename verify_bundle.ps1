@@ -19,7 +19,11 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\env.ps1"
 
 if (-not $Bundle) { $Bundle = $PSScriptRoot }
-$reloc = Join-Path ([System.IO.Path]::GetTempPath()) "xl-bundle-verify-$PID"
+# Deliberately NOT the temp directory: this writes and then EXECUTES a test
+# binary, which application-control policies on some machines block outright.
+# A sibling directory is still a different path from the bundle root, so the
+# relocation property being tested is unchanged.
+$reloc = Join-Path $PSScriptRoot ".verify-reloc-$PID"
 $failures = @()
 
 Write-Host "==> Relocating bundle for verification" -ForegroundColor Cyan

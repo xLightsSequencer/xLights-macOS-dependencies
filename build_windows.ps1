@@ -202,8 +202,12 @@ $stamp | ConvertTo-Json | Set-Content (Join-Path $PSScriptRoot 'BUILD_INFO.json'
 # Building is not the same as being usable. Check the bundle survives being
 # moved to a different path and can still be linked and run against, before it
 # is packaged for anyone to consume.
-Write-Host "==> Verifying the bundle is relocatable and usable" -ForegroundColor Cyan
-& "$PSScriptRoot\verify_bundle.ps1" -Bundle $PSScriptRoot
+if ($onlyNames) {
+    Write-Host "==> Skipping bundle verification (-Only build is partial)" -ForegroundColor DarkGray
+} else {
+    Write-Host "==> Verifying the bundle is relocatable and usable" -ForegroundColor Cyan
+    & "$PSScriptRoot\verify_bundle.ps1" -Bundle $PSScriptRoot
+}
 
 # --- package ----------------------------------------------------------------
 if (-not $SkipPackage) {

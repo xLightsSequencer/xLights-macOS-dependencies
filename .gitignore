@@ -19,3 +19,4 @@ BUILD_INFO.json
 build-win-*/
 /submodules/ffmpeg-win/
 /submodules/*_win.log
+/.verify-reloc-*/
