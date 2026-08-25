@@ -24,6 +24,21 @@ sed -i -e "s/^CFLAGS=/CFLAGS=-g ${ARM64_TARGETS} ${OSX_VERSION_MIN} -DGL_SILENCE
 sed -i -e "s/^CXXFLAGS=/CXXFLAGS=-g ${ARM64_TARGETS} ${OSX_VERSION_MIN} -DGL_SILENCE_DEPRECATION=1 -fno-common /" ffbuild/config.mak
 sed -i -e "s/^LDFLAGS=/LDFLAGS=-g ${ARM64_TARGETS} ${OSX_VERSION_MIN} -fno-common /" ffbuild/config.mak
 make -j ${NUMCPUS} ; make
+# Install the public headers alongside the libraries.
+#
+# Without this the bundle ships FFmpeg libraries but no FFmpeg headers, and
+# consumers compile against some other copy - which is how a build ends up
+# linking 8.x libraries against 6.x headers. AVFrame/AVCodecContext layouts
+# differ across major versions, so that mismatch compiles cleanly and then
+# misbehaves at runtime.
+#
+# This is an in-tree build, so the configure-generated headers (avconfig.h,
+# ffversion.h) sit next to the checked-in ones and are picked up by the glob.
+for _ffdir in libavcodec libavdevice libavfilter libavformat libavutil libswresample libswscale; do
+    mkdir -p "${BASE_DEPS_DIR}/include/${_ffdir}"
+    cp -f ./${_ffdir}/*.h "${BASE_DEPS_DIR}/include/${_ffdir}/"
+done
+
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavutil.a ./libavutil/libavutil.a ./x86_64/libavutil.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavfilter.a ./libavfilter/libavfilter.a ./x86_64/libavfilter.a
 lipo -create -output ${BASE_DEPS_DIR}/lib/libavcodec.a ./libavcodec/libavcodec.a ./x86_64/libavcodec.a
