@@ -5,6 +5,15 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BASE_DEPS_DIR=$( dirname -- "${SCRIPT_DIR}" )
 
+# --debug-only rebuilds just the debug libraries. Release wx is static and
+# takes about as long again, so when iterating on a wx source change - the one
+# situation where this script gets run repeatedly - it is wasted work.
+WX_DEBUG_ONLY=no
+if [ "${1:-}" = "--debug-only" ]; then
+    WX_DEBUG_ONLY=yes
+    echo "==> wxwidgets: debug-only build"
+fi
+
 
 cd wxWidgets
 git submodule update --init
@@ -30,8 +39,10 @@ export CFLAGS="-g"
             --without-liblzma  --with-expat=builtin --with-zlib=builtin --with-libjpeg=builtin  --without-libtiff \
             --disable-sys-libs --enable-utf8 --enable-utf8only \
             --enable-backtrace --enable-exceptions --disable-shared
-make -j ${NUMCPUS}
-make install
+if [ "${WX_DEBUG_ONLY}" = "no" ]; then
+    make -j ${NUMCPUS}
+    make install
+fi
 make clean
 
 
@@ -59,8 +70,44 @@ make -j ${NUMCPUS}
 rm -rf ${BASE_DEPS_DIR}/libdbg/libwx*.dylib
 make install
 
+# Make the debug information self-contained.
+#
+# Without this, the debug dylibs carry only a debug MAP: N_OSO stabs pointing
+# at the .o files they were linked from. The cleanup at the end of this script
+# deletes those objects, so the map dangles and a debugger shows wxWidgets
+# frames greyed out with no source. For a bundle downloaded from CI it can
+# never work at all, because the paths refer to the build machine.
+#
+# dsymutil resolves the map into a .dSYM beside each library while the objects
+# still exist, which is what makes wx debuggable from an unpacked bundle.
+echo "==> wxwidgets: generating dSYM bundles for the debug libraries"
+for _dylib in "${BASE_DEPS_DIR}"/libdbg/libwx*.dylib; do
+    # Only real files; the install leaves version symlinks beside them.
+    [ -f "${_dylib}" ] && [ ! -L "${_dylib}" ] || continue
+    dsymutil "${_dylib}" -o "${_dylib}.dSYM" || {
+        echo "build_wxwidgets: dsymutil failed for ${_dylib}" >&2
+        exit 1
+    }
+done
+
 cd ..
-git status --ignored -s . | colrm 1 2 | xargs rm  -rf
+# Remove build artifacts only.
+#
+# This used to be `git status --ignored -s . | colrm 1 2 | xargs rm -rf`, which
+# also listed MODIFIED TRACKED FILES - so editing wxWidgets in place and then
+# rebuilding silently deleted the edits. Harmless while the tree is clean,
+# which is why it survived; ruinous exactly when someone is working on wx.
+#
+# git clean is the right primitive: it only ever removes UNTRACKED files, so
+# tracked edits are safe by construction rather than by careful filtering.
+#   -d  descend into untracked directories
+#   -f  actually do it
+#   -x  include ignored files too
+#
+# Both -x and untracked-but-not-ignored matter here: wxWidgets does not
+# gitignore build/, so its artifacts are plain untracked. Matching only
+# ignored files would leave the entire build tree behind.
+git clean -dfxq .
 
 
 cd ../..
