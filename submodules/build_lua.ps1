@@ -31,12 +31,18 @@ foreach ($cfg in @('Release', 'Debug')) {
 
     # /MD and /MDd must match what xLights builds with; a CRT mismatch here
     # surfaces as duplicate-symbol or heap-corruption bugs far from the cause.
-    $flags = if ($cfg -eq 'Release') { @('/O2', '/MD', '/DNDEBUG') } else { @('/Od', '/MDd', '/D_DEBUG') }
+    # /Z7 puts debug info INSIDE the object, so it ends up in the .lib and the
+    # bundle stays self-contained - no external .pdb to ship or lose. That is
+    # how every other static library here carries its debug info. Release gets
+    # no debug flag at all; it was previously built with an unconditional /Zi,
+    # which put debug info in a release library for nothing.
+    $flags = if ($cfg -eq 'Release') { @('/O2', '/MD', '/DNDEBUG') }
+             else                    { @('/Od', '/MDd', '/D_DEBUG', '/Z7') }
 
     # Build one flat argument array and splat it. Passing an array as a single
     # argument to a ValueFromRemainingArguments parameter collapses it into one
     # space-joined string, which cl then treats as a single (nonexistent) path.
-    $clArgs = @('/nologo', '/c', '/Zi', '/W3', '/MP', '/D_CRT_SECURE_NO_WARNINGS') +
+    $clArgs = @('/nologo', '/c', '/W3', '/MP', '/D_CRT_SECURE_NO_WARNINGS') +
               $flags + @("/I$luaSrc") + $sources.FullName
 
     Push-Location $obj
