@@ -153,7 +153,19 @@ function Build-CMakeProject {
     if (-not (Test-Path $Source)) { throw "Build-CMakeProject: source not found: $Source" }
     Remove-Item -Recurse -Force $BuildDir -ErrorAction SilentlyContinue
 
-    $cfgArgs = @('-S', $Source, '-B', $BuildDir, '-G', 'Ninja', "-DCMAKE_BUILD_TYPE=$Config") + $Options
+    # Debug info goes INSIDE the object (/Z7) so it travels in the .lib and the
+    # bundle stays self-contained - it ships no .pdb files, and an external PDB
+    # left behind on the build machine makes every consumer link warn LNK4099
+    # and silently drop that library's symbols. Release gets none at all.
+    # CMP0141 must be forced NEW: these projects declare cmake_minimum_required
+    # below 3.25, where CMAKE_MSVC_DEBUG_INFORMATION_FORMAT is ignored outright
+    # rather than rejected, so without this the setting would do nothing and
+    # look like it had worked.
+    $dbgFormat = if ($Config -eq 'Debug') { 'Embedded' } else { '' }
+    $cfgArgs = @('-S', $Source, '-B', $BuildDir, '-G', 'Ninja',
+                 "-DCMAKE_BUILD_TYPE=$Config",
+                 '-DCMAKE_POLICY_DEFAULT_CMP0141=NEW',
+                 "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$dbgFormat") + $Options
     Invoke-Checked $XL_CMAKE @cfgArgs
     Invoke-Checked $XL_CMAKE --build $BuildDir --parallel $XL_NUMCPUS
 }
