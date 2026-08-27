@@ -22,6 +22,20 @@ if ($patched -eq $orig) {
 Set-Content -Path $top -Value $patched -NoNewline
 Write-Host "    stripped release /Zi + external pdb" -ForegroundColor DarkGray
 
+# USE_SYSTEM_MINIZIP stops libxlsxwriter compiling its own copy of minizip's
+# write half, which otherwise defines the same 19 zip* symbols this bundle's
+# minizip does - leaving which implementation runs up to link order. Its
+# discovery expects a vcpkg-style package on MSVC and pkg-config elsewhere, and
+# this bundle ships neither by design, so point it straight at what was built.
+$mzPatched = [regex]::Replace($patched,
+    '(?s)if\(MSVC\)\s*\r?\n\s*find_package\(MINIZIP[^\r\n]*\r?\n\s*set\(MINIZIP_LIBRARIES[^\r\n]*\r?\n\s*else\(\)\s*\r?\n\s*find_package\(PkgConfig[^\r\n]*\r?\n\s*pkg_check_modules\(MINIZIP[^\r\n]*\r?\n\s*list\(APPEND LXW_PRIVATE_INCLUDE_DIRS[^\r\n]*\r?\n\s*endif\(\)',
+    "set(MINIZIP_LIBRARIES `${XL_MINIZIP_LIBRARY})`n    list(APPEND LXW_PRIVATE_INCLUDE_DIRS `${XL_MINIZIP_INCLUDE_DIR})")
+if ($mzPatched -eq $patched) {
+    throw "build_libxlswriter: could not redirect the USE_SYSTEM_MINIZIP discovery - upstream CMakeLists changed"
+}
+Set-Content -Path $top -Value $mzPatched -NoNewline
+Write-Host "    redirected system-minizip discovery at the bundle" -ForegroundColor DarkGray
+
 try {
 foreach ($cfg in @('Release', 'Debug')) {
     $build = Join-Path $PSScriptRoot "libxlswriter\build-win-$cfg"
@@ -35,8 +49,15 @@ foreach ($cfg in @('Release', 'Debug')) {
         throw "build_libxlswriter: zlib ($cfg) has not been installed into the bundle yet - build_zlib must run first"
     }
 
+    $mzLib = Join-Path $(if ($cfg -eq 'Release') { $XL_LIB_DIR } else { $XL_DBG_DIR }) 'minizip.lib'
+    if (-not (Test-Path $mzLib)) {
+        throw "build_libxlswriter: minizip ($cfg) has not been installed into the bundle yet - build_minizip must run first"
+    }
     Build-CMakeProject -Source $src -BuildDir $build -Config $cfg -Options @(
         '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_TESTS=OFF', '-DBUILD_EXAMPLES=OFF',
+        '-DUSE_SYSTEM_MINIZIP=ON',
+        "-DXL_MINIZIP_LIBRARY=$mzLib",
+        "-DXL_MINIZIP_INCLUDE_DIR=$XL_INC_DIR",
         "-DZLIB_LIBRARY=$zlibLib",
         "-DZLIB_INCLUDE_DIR=$XL_INC_DIR")
 

@@ -1,0 +1,11 @@
+==> Relocating bundle for verification
+    from: /opt/xLights-dependencies
+    to:   /var/folders/k3/dz4gr_4x16j1r07wq4xhk6n80000gn/T//xl-bundle-verify.89172
+==> Checking Mach-O install names and dependencies
+    OK - no absolute paths in any dylib
+==> Checking text files for a baked-in build prefix
+    OK - no build prefix in shipped text files
+==> Linking and running a smoke test against the relocated bundle
+    OK - avcodec=62.28 avformat=62.12 zstd=1.5.7 lua=ok
+
+verify_bundle: bundle is relocatable and usable.

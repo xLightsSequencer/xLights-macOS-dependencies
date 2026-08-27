@@ -83,7 +83,7 @@ done <<< "$(find "${RELOC}" \( -name '*.pc' -o -name '*.cmake' -o -name '*.la' -
 #    miss an architecture mismatch; running proves the slice is usable.
 # ---------------------------------------------------------------------------
 echo "==> Linking and running a smoke test against the relocated bundle"
-REQUIRED_LIBS=(libavcodec.a libavformat.a libavutil.a libswresample.a liblua.a libzstd.a)
+REQUIRED_LIBS=(libavcodec.a libavformat.a libavutil.a libswresample.a liblua.a libzstd.a libminizip.a libxlsxwriter.a)
 MISSING_LIBS=()
 for l in "${REQUIRED_LIBS[@]}"; do
     [ -f "${RELOC}/lib/${l}" ] || MISSING_LIBS+=("${l}")
@@ -103,6 +103,8 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <lua.h>
+#include <minizip/unzip.h>
+#include <xlsxwriter.h>
 #include <lauxlib.h>
 }
 #include <zstd.h>
@@ -111,7 +113,13 @@ int main() {
     lua_State* L = luaL_newstate();
     if (!L) { printf("lua init failed\n"); return 1; }
     lua_close(L);
-    printf("avcodec=%u.%u avformat=%u.%u zstd=%s lua=ok\n",
+    unzFile uf = unzOpen("definitely-not-a-zip");
+    if (uf) { unzClose(uf); printf("minizip opened a non-zip\n"); return 1; }
+    // libxlsxwriter takes its zip half from minizip now, so prove the pair links.
+    lxw_workbook* wb = workbook_new("verify.xlsx");
+    if (!wb) { printf("xlsxwriter init failed\n"); return 1; }
+    workbook_close(wb);
+    printf("avcodec=%u.%u avformat=%u.%u zstd=%s lua=ok minizip=ok xlsxwriter=ok\n",
            c >> 16, (c >> 8) & 0xff, f >> 16, (f >> 8) & 0xff, ZSTD_versionString());
     return 0;
 }
@@ -122,6 +130,7 @@ if clang++ -std=c++17 -o "${RELOC}/smoke" "${SMOKE}" \
      "${RELOC}/lib/libavcodec.a" "${RELOC}/lib/libavformat.a" \
      "${RELOC}/lib/libavutil.a" "${RELOC}/lib/libswresample.a" \
      "${RELOC}/lib/liblua.a" "${RELOC}/lib/libzstd.a" \
+     "${RELOC}/lib/libxlsxwriter.a" "${RELOC}/lib/libminizip.a" \
      -framework CoreFoundation -framework CoreMedia -framework CoreVideo \
      -framework VideoToolbox -framework AudioToolbox -framework Security \
      -framework CoreServices -framework CoreGraphics -framework OpenGL \
