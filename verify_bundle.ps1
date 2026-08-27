@@ -55,7 +55,7 @@ if ($leaks.Count -gt 0) {
 # Linking alone would not catch a DLL that cannot be loaded, so the smoke test
 # calls into FFmpeg (a DLL) and lua/zstd (static) and is executed.
 Write-Host "==> Linking and running a smoke test against the relocated bundle" -ForegroundColor Cyan
-$required = @('lib\avcodec.lib', 'lib\avformat.lib', 'lib\lua.lib', 'lib\libzstd_static_VS.lib')
+$required = @('lib\avcodec.lib', 'lib\avformat.lib', 'lib\lua.lib', 'lib\libzstd_static_VS.lib', 'lib\minizip.lib')
 $missing = @($required | Where-Object { -not (Test-Path (Join-Path $reloc $_)) })
 if ($missing.Count -gt 0) {
     Write-Host "    SKIPPED - bundle missing: $($missing -join ', ')" -ForegroundColor Red
@@ -69,6 +69,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <lua.h>
 #include <lauxlib.h>
+#include <minizip/unzip.h>
 }
 #include <zstd.h>
 int main() {
@@ -76,7 +77,10 @@ int main() {
     lua_State* L = luaL_newstate();
     if (!L) { printf("lua init failed\n"); return 1; }
     lua_close(L);
-    printf("avcodec=%u.%u avformat=%u.%u zstd=%s lua=ok\n",
+    // Opening a non-zip must fail; the point is that the call links and runs.
+    unzFile uf = unzOpen("definitely-not-a-zip");
+    if (uf) { unzClose(uf); printf("minizip opened a non-zip\n"); return 1; }
+    printf("avcodec=%u.%u avformat=%u.%u zstd=%s lua=ok minizip=ok\n",
            c >> 16, (c >> 8) & 0xff, f >> 16, (f >> 8) & 0xff, ZSTD_versionString());
     return 0;
 }
@@ -87,7 +91,7 @@ int main() {
         $clArgs = @('/nologo', '/std:c++17', '/EHsc', '/MD', "/I$reloc\include",
                     'smoke.cpp', '/Fe:smoke.exe', '/link', "/LIBPATH:$reloc\lib",
                     'avcodec.lib', 'avformat.lib', 'avutil.lib', 'lua.lib',
-                    'libzstd_static_VS.lib')
+                    'libzstd_static_VS.lib', 'minizip.lib', 'zlib.lib')
         & cl @clArgs 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Write-Host "    LINK FAILED (cl exit $LASTEXITCODE)" -ForegroundColor Red

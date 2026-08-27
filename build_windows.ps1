@@ -31,6 +31,9 @@ $Libraries = @(
     # zlib has no macOS counterpart (system-provided there) but must precede
     # libxlswriter, which links against it.
     @{ Name = 'zlib';             Script = 'build_zlib.ps1';             Submodule = 'submodules/zlib' }
+    # minizip lives in zlib's contrib/, so it shares that submodule and must
+    # follow zlib: it compiles against the zlib.h that step installs.
+    @{ Name = 'minizip';          Script = 'build_minizip.ps1';          Submodule = 'submodules/zlib' }
     @{ Name = 'liquidfun';        Script = 'build_liquidfun.ps1';        Submodule = 'submodules/liquidfun' }
     @{ Name = 'sdl';              Script = 'build_sdl.ps1';              Submodule = 'submodules/SDL' }
     @{ Name = 'lua';              Script = 'build_lua.ps1';              Submodule = 'submodules/lua' }
